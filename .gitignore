@@ -21,10 +21,10 @@ uploads/
 *.log
 
 # Test data files (user-specific)
-*.xlsx
-*.pdf
-*.docx
-*.pptx
+#*.xlsx
+#*.pdf
+#*.docx
+#*.pptx
 
 # OS
 .DS_Store
