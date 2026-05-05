@@ -6,8 +6,20 @@ import HomeView from "./components/HomeView";
 import ChatView from "./components/ChatView";
 import Sidebar from "./components/Sidebar";
 import DropOverlay from "./components/DropOverlay";
+import WidgetChat from "./components/WidgetChat";
+import { useWidgetChat } from "./hooks/useWidgetChat";
+
+// Detect if running in widget mode (query param set by /rag-widget route)
+const isWidgetMode = typeof window !== "undefined" && new URLSearchParams(window.location.search).has("widget");
+
+function WidgetApp() {
+  const { messages, isStreaming, error, sendMessage, stopStreaming, clearChat, clearError } = useWidgetChat();
+  return <WidgetChat messages={messages} isStreaming={isStreaming} onSend={sendMessage} onStop={stopStreaming} error={error} onClearError={clearError} />;
+}
 
 export default function App() {
+  if (isWidgetMode) return <WidgetApp />;
+
   const {
     messages, isStreaming, statusText, sendMessage, stopStreaming, clearChat,
     loadConversation, restoreLastSession,

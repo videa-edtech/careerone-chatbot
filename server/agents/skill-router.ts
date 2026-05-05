@@ -9,33 +9,39 @@
 import { AGENT_REGISTRY } from "./registry.js";
 
 /**
- * 다국어 동의어 확장 — 영어/일본어 키워드를 한국어 동의어로 변환하여 메시지에 병합
+ * 다국어 동의어 확장 — 영어/일본어/싱할라어/타밀어 키워드를 한국어 동의어로 변환
  * registry.ts의 한국어 키워드와 매칭 가능하게 함
  */
 const MULTILINGUAL_MAP: Record<string, string[]> = {
   // 교육/HR
-  "교육": ["education", "training", "learning", "教育", "学習"],
-  "커리큘럼": ["curriculum", "カリキュラム"],
-  "직무 분석": ["job analysis", "competency analysis", "職務分析"],
-  "역량 분석": ["skill analysis", "competency assessment"],
-  "미래 일자리": ["future job", "career path", "将来の仕事"],
-  "스킬 갭": ["skill gap", "skills gap", "スキルギャップ"],
-  "채용": ["recruitment", "hiring", "採用"],
+  "교육": ["education", "training", "learning", "教育", "学習", "අධ්‍යාපනය", "கல்வி"],
+  "커리큘럼": ["curriculum", "カリキュラム", "குரோகுரம்"],
+  "직무 분석": ["job analysis", "competency analysis", "職務分析", "தொழில் பகுப்பாய்வு"],
+  "역량 분석": ["skill analysis", "competency assessment", "திறன் மதிப்பீடு"],
+  "미래 일자리": ["future job", "career path", "将来の仕事", "අනාගත රැකියා", "எதிர்கால வேலை"],
+  "스킬 갭": ["skill gap", "skills gap", "スキルギャップ", "திறன் இடைவெளி"],
+  "채용": ["recruitment", "hiring", "採用", "බඳවාගැනීම", "நியமனம்"],
   // 문서 생성
-  "보고서": ["report", "レポート"],
-  "PPT": ["presentation", "slides", "プレゼン"],
-  "엑셀": ["excel", "spreadsheet", "エクセル"],
+  "보고서": ["report", "レポート", "அறிக்கை"],
+  "PPT": ["presentation", "slides", "プレゼン", "விளக்கக்குறிப்பு"],
+  "엑셀": ["excel", "spreadsheet", "エレクト", "எக்செல்"],
   // 분석
   "경쟁사": ["competitor", "competitive", "競合"],
-  "전략": ["strategy", "strategic", "戦略"],
-  "재무": ["financial", "finance", "財務"],
-  "데이터 분석": ["data analysis", "analytics", "データ分析"],
+  "전략": ["strategy", "strategic", "戦略", "செயல்நுட்பம்"],
+  "재무": ["financial", "finance", "財務", "நிதி"],
+  "데이터 분석": ["data analysis", "analytics", "データ分析", "தரவு பகுப்பாய்வு"],
   // 일반
-  "번역": ["translate", "translation", "翻訳"],
-  "요약": ["summary", "summarize", "要約"],
-  "검색": ["search", "find", "検索"],
-  "이메일": ["email", "メール"],
-  "프로젝트": ["project", "プロジェクト"],
+  "번역": ["translate", "translation", "翻訳", "மொழிபெயர்ப்பு"],
+  "요약": ["summary", "summarize", "要約", "சுருக்கம்"],
+  "검색": ["search", "find", "検索", "தேடல்"],
+  "이메일": ["email", "メール", "இமெயில்"],
+  "프로젝트": ["project", "プロジェクト", "திட்டம்"],
+  // 스리랑카/Tamil specific
+  "TVET": ["tvet", "tveta", "தொழிற்திறன்", "职业培训"],
+  "자격증": ["certificate", "certification", "certification", "சான்றிதழ்", "资格证书"],
+  "대학교": ["university", "大学", "பல்கலைக்கழகம்"],
+  "학교": ["school", "college", "学校", "பள்ளி", "கல்லூரி"],
+  "경력": ["career", "profession", "occupation", "キャリア", "வேலைநிறைவு"],
 };
 
 function expandMultilingual(lowerMsg: string): string {

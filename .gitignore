@@ -21,10 +21,10 @@ uploads/
 *.log
 
 # Test data files (user-specific)
-#*.xlsx
-#*.pdf
-#*.docx
-#*.pptx
+*.xlsx
+*.pdf
+*.docx
+*.pptx
 
 # OS
 .DS_Store
@@ -49,3 +49,4 @@ sqlite-rag-technical-doc.md
 
 # Package locks (root only, keep client's)
 /package-lock.json
+.gstack/

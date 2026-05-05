@@ -1,12 +1,15 @@
 /**
- * Embedding Module — transformers.js (all-MiniLM-L6-v2, 384dim)
+ * Embedding Module — transformers.js (paraphrase-multilingual-MiniLM-L12-v2, 384dim)
  *
  * 싱글턴 파이프라인으로 모델을 한 번만 로드.
  * 첫 호출 시 ~2-3초 로드, 이후 ~10ms/문장.
+ *
+ * 모델: 50+ 언어 지원 (English, Korean, Sinhala, Tamil, Japanese, etc.)
+ * all-MiniLM-L6-v2는 영어-only였으므로 멀티링구얼 모델로 교체.
  */
 import { pipeline, type FeatureExtractionPipeline } from "@huggingface/transformers";
 
-const MODEL_NAME = "Xenova/all-MiniLM-L6-v2";
+const MODEL_NAME = "Xenova/paraphrase-multilingual-MiniLM-L12-v2";
 export const EMBEDDING_DIM = 384;
 
 let embedPipeline: FeatureExtractionPipeline | null = null;

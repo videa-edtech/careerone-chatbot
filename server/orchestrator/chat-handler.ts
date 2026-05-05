@@ -321,10 +321,10 @@ export async function handleChat(res: Response, options: ChatOptions) {
       } catch { /* skip */ }
     }
 
-    // 3차: 영문 메시지인데 결과가 부족하면 → 다국어 동의어로 재검색
-    const isEnglish = /^[a-zA-Z\s\d.,!?'"()-]+$/.test(message.trim());
-    if (isEnglish && allResults.length < 3) {
-      const multilingualKw = expandSearchToKorean(message);
+    // 3차: 비영문 스크립트 또는 결과 부족 시 → 다국어 동의어로 재검색
+    const detectedLang = detectScript(message);
+    if (detectedLang !== "english" && allResults.length < 3) {
+      const multilingualKw = expandMultilingualSearch(message, detectedLang);
       for (const kw of multilingualKw) {
         try {
           const kwResults = await search(kw, { topK: 3, searchMode: "fts" });
@@ -568,48 +568,80 @@ function extractKeywords(message: string): string {
 }
 
 /**
- * 영문 메시지에서 한국어 검색 키워드를 추출
- * 영어 → 한국어 동의어 변환으로 FTS5 한국어 인덱스와 매칭
+ * 스크립트 기반 언어 감지
+ * Unicode 범위로 한국어/영어/싱할라어/타밀어 구분
  */
-function expandSearchToKorean(message: string): string[] {
+function detectScript(text: string): string {
+  // 순서 중요: specific scripts 먼저
+  if (/[\u0D80-\u0DFF]/.test(text)) return "sinhala";    // 𑄃–𑄹
+  if (/[\u0B80-\u0BFF]/.test(text)) return "tamil";       // த–்
+  if (/[\uAC00-\uD7AF\u1100-\u11FF]/.test(text)) return "korean";
+  if (/[\u3040-\u309F\u30A0-\u30FF]/.test(text)) return "japanese";
+  if (/^[\u0020-\u007E\s\d.,!?'"()-]+$/.test(text)) return "english";
+  return "mixed";
+}
+
+/**
+ * 비영문 메시지에서 한국어 검색 키워드를 추출
+ * 싱할라어/타밀어/영어 → 한국어 동의어 변환으로 FTS5 한국어 인덱스와 매칭
+ */
+function expandMultilingualSearch(message: string, lang: string): string[] {
   const lower = message.toLowerCase();
   const koreanKeywords: string[] = [];
 
-  const EN_TO_KR: Record<string, string> = {
-    "education": "교육",
-    "training": "교육",
-    "learning": "학습",
-    "career": "경력",
-    "competency": "역량",
-    "competencies": "역량",
-    "skill": "역량",
-    "skills": "역량",
-    "job": "직무",
-    "finance": "재무",
-    "financial": "재무",
-    "accounting": "회계",
-    "data analysis": "데이터분석",
-    "data analyst": "데이터분석",
-    "certification": "자격증",
-    "certificate": "자격증",
-    "curriculum": "커리큘럼",
-    "assessment": "평가",
-    "recruitment": "채용",
-    "marketing": "마케팅",
-    "security": "보안",
-    "design": "설계",
-    "consultant": "컨설턴트",
-    "engineering": "공학",
-    "developer": "개발자",
-    "manager": "매니저",
-    "analyst": "분석가",
-    "history": "이력",
-    "recommend": "추천",
-    "future": "미래",
+  // 언어별 동의어 매트릭스
+  const TRANS_MAP: Record<string, Record<string, string>> = {
+    english: {
+      "education": "교육", "training": "교육", "learning": "학습",
+      "career": "경력", "competency": "역량", "competencies": "역량",
+      "skill": "역량", "skills": "역량", "job": "직무",
+      "finance": "재무", "financial": "재무", "accounting": "회계",
+      "data analysis": "데이터분석", "data analyst": "데이터분석",
+      "certification": "자격증", "certificate": "자격증",
+      "curriculum": "커리큘럼", "assessment": "평가",
+      "recruitment": "채용", "marketing": "마케팅", "security": "보안",
+      "design": "설계", "consultant": "컨설턴트", "engineering": "공학",
+      "developer": "개발자", "manager": "매니저", "analyst": "분석가",
+      "history": "이력", "recommend": "추천", "future": "미래",
+    },
+    sinhala: {
+      // සිංහල (Sinhala) → Korean
+      "education": "교육", "training": "교육", "learning": "학습",
+      "career": "경력", "job": "직무", "work": "일",
+      "skill": "역량", "skills": "역량", "competency": "역량",
+      "university": "대학교", "school": "학교",
+      "course": "과정", "curriculum": "커리큘럼",
+      "certificate": "자격증", "certification": "자격증",
+      "recommendation": "추천", "future": "미래",
+      "analysis": "분석", "data": "데이터",
+      "history": "이력", "financial": "재무",
+    },
+    tamil: {
+      // தமிழ் (Tamil) → Korean
+      "education": "교육", "training": "교육", "learning": "학습",
+      "career": "경력", "job": "직무", "work": "일",
+      "skill": "역량", "skills": "역량", "competency": "역량",
+      "university": "대학교", "school": "학교",
+      "course": "과정", "curriculum": "커리큘럼",
+      "certificate": "자격증", "certification": "자격증",
+      "recommendation": "추천", "future": "미래",
+      "analysis": "분석", "data": "데이터",
+      "history": "이력", "financial": "재무",
+    },
+    japanese: {
+      "教育": "교육", "訓練": "교육", "学習": "학습",
+      "キャリア": "경력", " career": "경력", "job": "직무",
+      "スキル": "역량", "能力": "역량",
+      "大学": "대학교", "学校": "학교",
+      "課程": "과정", "curriculum": "커리큘럼",
+      "証明書": "자격증", "資格": "자격증",
+      "推薦": "추천", "未来": "미래",
+    },
   };
 
-  for (const [en, kr] of Object.entries(EN_TO_KR)) {
-    if (lower.includes(en)) {
+  const trans = TRANS_MAP[lang] || TRANS_MAP.english;
+  for (const [foreign, kr] of Object.entries(trans)) {
+    if (lower.includes(foreign)) {
       koreanKeywords.push(kr);
     }
   }
@@ -618,7 +650,7 @@ function expandSearchToKorean(message: string): string[] {
   // → 한국어 데이터에서 이름 매칭을 위해 교육이력 전체를 검색
   const namePattern = /\b([A-Z][a-z]+)\s+([A-Z][a-z]+)/g;
   if (namePattern.test(message)) {
-    koreanKeywords.push("교육이력"); // 이름 목록이 포함된 시트를 가져옴
+    koreanKeywords.push("교육이력");
   }
 
   return [...new Set(koreanKeywords)];
