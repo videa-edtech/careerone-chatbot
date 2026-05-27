@@ -49,7 +49,7 @@ export default function ChatView({ messages, isStreaming, statusText, onSend, on
       </div>
 
       {/* Status indicator + Input bar */}
-      <div className="shrink-0 bg-gradient-to-t from-desk-bg via-desk-bg/95 to-transparent">
+      <div className="shrink-0">
         {isStreaming && <StatusIndicator text={statusText} />}
         <div className="px-4 pb-5 pt-2">
           <InputBar

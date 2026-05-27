@@ -63,18 +63,22 @@ export default function Sidebar({
         <div className="fixed inset-0 bg-black/50 backdrop-blur-[2px] z-40 md:hidden" onClick={onClose} />
       )}
 
-      <aside className={`fixed top-0 left-0 h-full w-72 bg-desk-surface/95 backdrop-blur-md border-r border-desk-border/60 z-50 transform transition-transform duration-300 ease-out ${isOpen ? "translate-x-0" : "-translate-x-full"} flex flex-col`}>
+      <aside className={`fixed top-0 left-0 h-full w-72 bg-blue-100 z-50 transform transition-transform duration-300 ease-out shadow-2xl ${isOpen ? "translate-x-0" : "-translate-x-full"} flex flex-col`}>
         {/* Header */}
-        <div className="flex items-center justify-between px-4 py-4 border-b border-desk-border/50">
+        <div className="flex items-center justify-between px-4 py-4 border-b border-blue-500 bg-blue-500">
           <div className="flex items-center gap-2.5">
-            <div className="w-7 h-7 rounded-lg bg-amber-glow/15 flex items-center justify-center">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#e8a84c" strokeWidth="2" strokeLinecap="round">
-                <path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20" />
-              </svg>
+            {/*<div className="w-7 h-7 rounded-lg bg-amber-glow/15 flex items-center justify-center">*/}
+            {/*  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#e8a84c" strokeWidth="2" strokeLinecap="round">*/}
+            {/*    <path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20" />*/}
+            {/*  </svg>*/}
+            {/*</div>*/}
+            {/*<span className="font-display text-base text-paper-white">Mini-RAG</span>*/}
+            <div className="w-14 h-14 rounded-md flex items-center justify-center">
+              <img src="https://careerone-dev.videabiz.com/images/careerone-logo.webp" alt=""/>
             </div>
-            <span className="font-display text-base text-paper-white">Mini-RAG</span>
+            <span className="font-display text-xs text-white">CareerOne helper</span>
           </div>
-          <button onClick={onClose} className="text-ink-500 hover:text-paper-cream transition-colors p-1.5 rounded-lg hover:bg-desk-hover">
+          <button onClick={onClose} className="text-white hover:text-paper-cream transition-colors p-1.5 rounded-lg hover:bg-desk-hover">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
               <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
             </svg>
@@ -83,11 +87,11 @@ export default function Sidebar({
 
         {/* New chat */}
         <div className="px-3 py-3">
-          <button onClick={onNewChat} className="w-full flex items-center gap-2 px-3 py-2.5 rounded-xl bg-desk-elevated/80 border border-desk-border/60 text-sm font-body text-ink-300 hover:text-amber-glow hover:border-amber-glow/30 transition-all duration-200">
+          <button onClick={onNewChat} className="w-full flex items-center gap-2 px-3 py-2.5 rounded-xl bg-white border border-blue-500 text-blue-500 text-sm font-body hover:text-white hover:bg-blue-500 transition-all duration-200">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
               <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
             </svg>
-            새 대화
+            New conversation
           </button>
         </div>
 
@@ -181,7 +185,7 @@ export default function Sidebar({
 
         {/* Footer */}
         <div className="px-4 py-3 border-t border-desk-border/40 text-center">
-          <p className="text-[11px] font-body text-ink-700">Mini-RAG · 로컬 AI 코워크</p>
+          <p className="text-[11px] font-body text-ink-700">CareerOne · Your chatbot helper</p>
         </div>
       </aside>
     </>
