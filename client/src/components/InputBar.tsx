@@ -51,7 +51,7 @@ export default function InputBar({ onSend, isStreaming, onStop, onUploadClick, p
           value={text}
           onChange={(e) => setText(e.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder={placeholder || "메시지를 입력하세요..."}
+          placeholder={placeholder || "Please enter a message..."}
           rows={1}
           className="w-full bg-white text-[#464559] placeholder-blue-500 pl-5 pr-24 py-4 resize-none outline-none font-body text-[15px] leading-relaxed rounded-2xl"
         />

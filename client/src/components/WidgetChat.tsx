@@ -122,7 +122,7 @@ function WidgetInputBar({ onSubmit, isStreaming, onStop }: { onSubmit: (t: strin
           value={text}
           onChange={(e) => setText(e.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder="메시지를 입력하세요..."
+          placeholder="Please enter a message..."
           rows={1}
           className="w-full px-4 py-3 pr-14 bg-transparent resize-none text-ink-100 placeholder-ink-400 focus:outline-none rounded-2xl text-sm"
           style={{ minHeight: "48px", maxHeight: "160px" }}
