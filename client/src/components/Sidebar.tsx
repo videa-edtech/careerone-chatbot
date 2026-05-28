@@ -105,7 +105,7 @@ export default function Sidebar({
                   <button
                     key={conv.id}
                     onClick={() => { onLoadConversation(conv.id); onClose(); }}
-                    className="w-full flex items-start gap-2 px-2.5 py-2.5 rounded-lg text-sm font-body text-ink-400 hover:bg-blue-100 hover:text-blue-500 transition-colors text-left group"
+                    className="w-full flex items-start gap-2 px-2.5 py-2.5 rounded-lg text-sm font-body text-ink-400 hover:bg-desk-hover hover:text-paper-cream transition-colors text-left group"
                   >
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" className="shrink-0 mt-0.5 text-ink-600 group-hover:text-ink-400 transition-colors">
                       <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
@@ -158,7 +158,7 @@ export default function Sidebar({
           {documents.length > 0 && (
             <section className="px-3 pb-3">
               <h3 className="px-2 py-2 text-[11px] font-body text-ink-600 uppercase tracking-wider">
-                업로드된 문서 ({documents.length})
+                File uploaded ({documents.length})
               </h3>
               <div className="space-y-0.5">
                 {documents.map((doc) => (
@@ -166,7 +166,7 @@ export default function Sidebar({
                     <span className="shrink-0 text-base">{FORMAT_ICONS[doc.format] || "📎"}</span>
                     <div className="flex-1 min-w-0">
                       <p className="truncate text-ink-300 group-hover:text-paper-cream transition-colors">{doc.file_name}</p>
-                      <p className="text-[11px] text-ink-600">{doc.chunk_count} 청크</p>
+                      <p className="text-[11px] text-ink-600">{doc.chunk_count} file</p>
                     </div>
                     <button
                       onClick={() => onDeleteDoc(doc.id)}
