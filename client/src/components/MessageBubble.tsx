@@ -54,8 +54,8 @@ export default function MessageBubble({ message, isLast, isStreaming }: Props) {
         <div
           className={`rounded-2xl px-5 py-3.5 ${
             isUser
-              ? "bg-amber-glow/[0.12] border border-amber-glow/15 text-paper-cream"
-              : "bg-desk-surface/90 border border-desk-border/40 text-ink-200"
+              ? "bg-blue-500 text-white"
+              : "bg-blue-500 text-white"
           }`}
         >
           {isUser ? (
