@@ -63,7 +63,7 @@ export default function Sidebar({
         <div className="fixed inset-0 bg-black/50 backdrop-blur-[2px] z-40 md:hidden" onClick={onClose} />
       )}
 
-      <aside className={`fixed top-0 left-0 h-full w-72 bg-blue-100 z-50 transform transition-transform duration-300 ease-out shadow-2xl ${isOpen ? "translate-x-0" : "-translate-x-full"} flex flex-col`}>
+      <aside className={`fixed top-0 left-0 h-full w-72 bg-blue-100 z-50 transform transition-transform duration-300 ease-out ${isOpen ? "translate-x-0" : "-translate-x-full"} flex flex-col`}>
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-4 border-b border-blue-500 bg-blue-500">
           <div className="flex items-center gap-2.5">

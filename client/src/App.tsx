@@ -182,13 +182,13 @@ export default function App() {
           <span className="font-display text-xl text-blue-500">CareerOne helper</span>
         </div>
 
-        <div className="flex items-center gap-3">
-          {status && status.total_documents > 0 && (
-            <span className="text-xs font-body text-ink-600 tabular-nums">
-              {status.total_documents} docs · {status.total_chunks.toLocaleString()} chunks
-            </span>
-          )}
-        </div>
+        {/*<div className="flex items-center gap-3">*/}
+        {/*  {status && status.total_documents > 0 && (*/}
+        {/*    <span className="text-xs font-body text-ink-600 tabular-nums">*/}
+        {/*      {status.total_documents} docs · {status.total_chunks.toLocaleString()} chunks*/}
+        {/*    </span>*/}
+        {/*  )}*/}
+        {/*</div>*/}
       </header>
 
       {/* Main */}

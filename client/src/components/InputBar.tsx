@@ -96,7 +96,7 @@ export default function InputBar({ onSend, isStreaming, onStop, onUploadClick, p
         </div>
       </div>
 
-      <p className="text-center text-ink-600 text-xs mt-2.5 font-body">
+      <p className="text-center text-blue-600 text-xs mt-2.5 font-body">
         Drag document to upload · Enter Send · Shift+Enter Newline
       </p>
     </div>
