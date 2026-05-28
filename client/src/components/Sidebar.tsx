@@ -99,13 +99,13 @@ export default function Sidebar({
           {/* Conversations */}
           {conversations.length > 0 && (
             <section className="px-3 pb-3">
-              <h3 className="px-2 py-2 text-[11px] font-body text-ink-600 uppercase tracking-wider">대화 이력</h3>
+              <h3 className="px-2 py-2 text-[11px] font-body text-blue-500 uppercase tracking-wider">Chat history</h3>
               <div className="space-y-0.5">
                 {conversations.slice(0, 20).map((conv) => (
                   <button
                     key={conv.id}
                     onClick={() => { onLoadConversation(conv.id); onClose(); }}
-                    className="w-full flex items-start gap-2 px-2.5 py-2.5 rounded-lg text-sm font-body text-ink-400 hover:bg-desk-hover hover:text-paper-cream transition-colors text-left group"
+                    className="w-full flex items-start gap-2 px-2.5 py-2.5 rounded-lg text-sm font-body text-ink-400 hover:bg-blue-100 hover:text-blue-500 transition-colors text-left group"
                   >
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" className="shrink-0 mt-0.5 text-ink-600 group-hover:text-ink-400 transition-colors">
                       <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
