@@ -40,6 +40,9 @@ export default {
         display: ['"Newsreader"', '"Noto Serif KR"', "Georgia", "serif"],
         body: ['"Pretendard"', '"Noto Sans KR"', "system-ui", "sans-serif"],
         mono: ['"JetBrains Mono"', '"Fira Code"', "monospace"],
+        poppins: ['"Poppins"', '"Noto Sans KR"', "system-ui", "sans-serif"],
+        guess: ['"Guess Sans W00 Heavy"', "sans-serif"],
+        lemon: ['"Lemon Milk Pro"', "sans-serif"],
       },
       animation: {
         "fade-in": "fadeIn 0.5s ease-out forwards",

@@ -46,10 +46,10 @@ export default function HomeView({ status, onSend, isStreaming, onStop, onUpload
         {/*</div>*/}
 
         {/* Greeting */}
-        <h1 className="font-display text-[2.5rem] md:text-[3rem] text-blue-500 mb-3 animate-fade-in tracking-tight" style={{ animationDelay: "0.1s" }}>
+        <h1 className="font-lemon text-[#1c007e] text-[2.5rem] md:text-[3rem] mb-3 animate-fade-in tracking-tight" style={{ animationDelay: "0.1s" }}>
           Hello,
         </h1>
-        <p className="font-body text-[#201F36] text-base mb-10 animate-fade-in text-center leading-relaxed" style={{ animationDelay: "0.2s" }}>
+        <p className="font-lemon text-[#201F36] text-base mb-10 animate-fade-in text-center leading-relaxed" style={{ animationDelay: "0.2s" }}>
           I'm your help robot. Feel Free to ask me anything about CareerOne!
         </p>
 

@@ -173,13 +173,13 @@ export default function App() {
         </button>
         <div className="flex justify-center w-full">
           <div className="flex items-center gap-2">
-            <div className="w-15 h-15 rounded-md flex items-center justify-center">
+            <div className="rounded-md flex items-center justify-center">
               {/*<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#e8a84c" strokeWidth="2.5" strokeLinecap="round">*/}
               {/*  <path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20" />*/}
               {/*</svg>*/}
-              <img src="https://careerone-dev.videabiz.com/images/careerone-logo.webp" alt=""/>
+              <img src="https://careerone-dev.videabiz.com/images/careerone-logo.webp" className="w-[64px]" alt=""/>
             </div>
-            <span className="font-display text-xl text-blue-500">CareerOne helper</span>
+            <span className="font-lemon text-xl text-[#1c007e]">Helper</span>
           </div>
         </div>
 
