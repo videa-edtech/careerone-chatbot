@@ -44,9 +44,9 @@ export default function MessageBubble({ message, isLast, isStreaming }: Props) {
         {!isUser && (
           <div className="flex items-center gap-1.5 mb-1.5 ml-1">
             <div className="w-14 h-10 rounded-md flex items-center justify-center">
-              <img src="https://careerone.gov.lk/images/careerone-logo.webp" alt=""/>
+              <img src="https://careerone-dev.videabiz.com/images/careerone-logo.webp" alt=""/>
             </div>
-            <span className="text-[11px] font-body text-ink-600">CareerOne helper</span>
+            <span className="text-[11px] font-body text-blue-500">CareerOne helper</span>
           </div>
         )}
 
