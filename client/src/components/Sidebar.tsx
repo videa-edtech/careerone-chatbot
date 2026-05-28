@@ -76,7 +76,7 @@ export default function Sidebar({
             <div className="w-14 h-14 rounded-md flex items-center justify-center">
               <img src="https://careerone-dev.videabiz.com/images/careerone-logo.webp" alt=""/>
             </div>
-            <span className="font-lemon text-[#1c007e] text-xs text-white">Helper</span>
+            <span className="font-lemon text-[#1c007e] text-xs">Helper</span>
           </div>
           <button onClick={onClose} className="text-white hover:text-paper-cream transition-colors p-1.5 rounded-lg hover:bg-desk-hover">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
