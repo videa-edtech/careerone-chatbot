@@ -1,19 +1,20 @@
 /**
- * Custom MCP Server for Mini-RAG
+ * Custom MCP Server for Mini-RAG — DeepSeek 마이그레이션 버전
  *
- * Agent SDK의 createSdkMcpServer + tool() 함수로 정의.
- * 도메인 특화 작업(검색, 문서 관리, 기록)을 타입 안전한 도구로 노출.
+ * @anthropic-ai/claude-agent-sdk의 createSdkMcpServer + tool() 제거
+ * → @modelcontextprotocol/sdk의 표준 McpServer로 교체
+ *
+ * 동일한 11개 도구를 유지하면서 호환 레이어 제공.
  */
-import { createSdkMcpServer, tool } from "@anthropic-ai/claude-agent-sdk";
+import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { search } from "../search/orchestrator.js";
 import { getDocumentStats, listDocuments, deleteDocument } from "../ingestion/indexer.js";
 import { getDocumentSummaries } from "../memory/document-summary.js";
-import { logTask, getTaskLog } from "../memory/task-log.js";
+import { logTask } from "../memory/task-log.js";
 import { saveIntent, listIntents } from "../memory/intent-store.js";
 import {
   listConversations,
-  getConversation,
 } from "../memory/conversation-store.js";
 import {
   saveWorkJournal,
@@ -23,10 +24,19 @@ import {
 } from "../memory/work-journal.js";
 
 // ==============================
+// MCP Server 인스턴스
+// ==============================
+
+export const ragMcpServer = new McpServer({
+  name: "rag",
+  version: "3.0.0",
+});
+
+// ==============================
 // 검색 도구
 // ==============================
 
-const searchDocuments = tool(
+ragMcpServer.tool(
   "search_documents",
   "인덱싱된 문서에서 키워드/의미 검색을 수행합니다. 사용자 질문에 답하기 위해 관련 문서 청크를 찾을 때 사용하세요. 결과는 관련도 순으로 정렬됩니다.",
   {
@@ -60,16 +70,12 @@ const searchDocuments = tool(
       };
     }
 
-    // 관련 문서 ID 추출 (중복 제거)
     const docIds = [...new Set(results.map((r) => r.document_id))];
-
-    // 문서 요약 조회 (있으면 컨텍스트로 활용)
     const summaries = getDocumentSummaries(docIds);
     const summaryMap = new Map(summaries.map((s) => [s.document_id, s]));
 
     let responseText = "";
 
-    // 1. 요약이 있는 문서: 요약(컨텍스트) + 상위 3개 청크 원문(답변 근거)
     for (const docId of docIds) {
       const summary = summaryMap.get(docId);
       const docChunks = results.filter((r) => r.document_id === docId);
@@ -78,7 +84,6 @@ const searchDocuments = tool(
         responseText += `📋 문서 컨텍스트 [${docChunks[0]?.file_name || ""}]: ${summary.summary.slice(0, 200)}\n\n`;
       }
 
-      // 상위 3개 청크는 원문 포함 (실제 답변에 필요)
       const topChunks = docChunks.slice(0, 3);
       for (let i = 0; i < topChunks.length; i++) {
         const r = topChunks[i];
@@ -87,7 +92,6 @@ const searchDocuments = tool(
         responseText += `[${i + 1}] ${r.title} — ${r.file_name}${pageInfo} [${r.format.toUpperCase()}]\nScore: ${r.score.toFixed(4)}\n${r.content}\n\n`;
       }
 
-      // 나머지 청크는 제목만 (토큰 절약)
       if (docChunks.length > 3) {
         const remaining = docChunks.slice(3);
         responseText += `추가 관련 섹션: ${remaining.map((r) => {
@@ -107,11 +111,10 @@ const searchDocuments = tool(
         },
       ],
     };
-  },
-  { annotations: { readOnlyHint: true } }
+  }
 );
 
-const getStatus = tool(
+ragMcpServer.tool(
   "get_document_status",
   "현재 인덱싱된 문서의 통계를 조회합니다. 전체 문서 수, 청크 수, 포맷별 분포를 확인할 수 있습니다.",
   {},
@@ -125,11 +128,10 @@ const getStatus = tool(
     return {
       content: [{ type: "text" as const, text: summary }],
     };
-  },
-  { annotations: { readOnlyHint: true } }
+  }
 );
 
-const listDocs = tool(
+ragMcpServer.tool(
   "list_documents",
   "인덱싱된 문서 목록을 조회합니다. 파일명, 포맷, 청크 수, 생성 날짜를 확인할 수 있습니다.",
   {
@@ -168,11 +170,10 @@ const listDocs = tool(
         { type: "text" as const, text: `문서 ${docs.length}건:\n${list}` },
       ],
     };
-  },
-  { annotations: { readOnlyHint: true } }
+  }
 );
 
-const deleteDocs = tool(
+ragMcpServer.tool(
   "delete_document",
   "인덱싱된 문서를 삭제합니다. 문서 ID를 지정하면 해당 문서와 모든 관련 청크가 삭제됩니다.",
   {
@@ -197,7 +198,7 @@ const deleteDocs = tool(
 // 기록 도구
 // ==============================
 
-const saveUserIntent = tool(
+ragMcpServer.tool(
   "save_user_intent",
   "사용자의 의도나 목표를 MD 파일로 저장합니다. 대화에서 사용자가 새로운 목표나 프로젝트 의도를 표현하면 이 도구로 기록하세요.",
   {
@@ -230,7 +231,7 @@ const saveUserIntent = tool(
   }
 );
 
-const logTaskExecution = tool(
+ragMcpServer.tool(
   "log_task_execution",
   "수행한 작업을 로그로 기록합니다. 검색, 문서 처리 등 모든 작업 완료 후 호출하세요.",
   {
@@ -249,7 +250,7 @@ const logTaskExecution = tool(
   }
 );
 
-const getHistory = tool(
+ragMcpServer.tool(
   "get_conversation_history",
   "이전 대화 목록을 조회합니다. 사용자가 이전 대화를 참조하거나 맥락을 이어갈 때 사용하세요.",
   {
@@ -282,11 +283,10 @@ const getHistory = tool(
         },
       ],
     };
-  },
-  { annotations: { readOnlyHint: true } }
+  }
 );
 
-const getIntents = tool(
+ragMcpServer.tool(
   "get_user_intents",
   "저장된 사용자 의도/목표 목록을 조회합니다. 세션 시작 시 이전 맥락을 파악하거나, 진행 상황을 확인할 때 사용하세요.",
   {},
@@ -318,30 +318,22 @@ const getIntents = tool(
         },
       ],
     };
-  },
-  { annotations: { readOnlyHint: true } }
+  }
 );
-
-// ==============================
-// 파일 생성: Agent SDK가 Bash + Python으로 직접 생성
-// (MCP 도구 제거됨 — create_excel, create_presentation, create_document)
-// Agent가 python-pptx, xlsxwriter, python-docx 코드를 작성하고
-// Bash 도구로 실행하여 디자인 포함 문서를 직접 생성합니다.
-// ==============================
 
 // ==============================
 // 작업 학습 일지 도구
 // ==============================
 
-const saveWorkJournalTool = tool(
+ragMcpServer.tool(
   "save_work_journal",
-  "작업 완료 후 학습 일지를 기록합니다. 어떤 Skill/프레임워크를 적용했고 결과가 어땠는지 기록하세요. 모든 문서 생성, 분석, 검색 작업 후 반드시 호출하세요.",
+  "작업 완료 후 학습 일지를 기록합니다. 어떤 Skill/프레임워크를 적용했고 결과가 어땠는지 기록하세요.",
   {
     task_type: z.string().describe("작업 유형: report, proposal, ppt, excel, search, analysis, email, blog, essay, marketing 등"),
-    skill_used: z.string().describe("적용한 Skill/프레임워크 이름 (예: pyramid-scqa, pitch-deck, aida-marketing)"),
+    skill_used: z.string().describe("적용한 Skill/프레임워크 이름"),
     description: z.string().describe("수행한 작업 내용 요약"),
     output_file: z.string().optional().describe("생성된 파일 경로"),
-    user_feedback: z.string().optional().describe("사용자 반응/피드백 (있을 때)"),
+    user_feedback: z.string().optional().describe("사용자 반응/피드백"),
     lessons: z.string().optional().describe("배운 점, 다음에 다르게 할 것"),
     quality_notes: z.string().optional().describe("잘된 점, 개선할 점"),
   },
@@ -356,12 +348,12 @@ const saveWorkJournalTool = tool(
   }
 );
 
-const queryWorkJournalTool = tool(
+ragMcpServer.tool(
   "query_work_journal",
-  "이전 작업 기록을 조회합니다. 같은 유형의 작업을 할 때 이전에 적용한 프레임워크, 사용자 피드백, 교훈을 참고하세요. 작업 시작 전에 호출하세요.",
+  "이전 작업 기록을 조회합니다. 같은 유형의 작업을 할 때 이전에 적용한 프레임워크, 사용자 피드백, 교훈을 참고하세요.",
   {
     task_type: z.string().optional().describe("작업 유형으로 필터 (예: report, ppt, excel). 미지정 시 최근 기록 반환"),
-    keyword: z.string().optional().describe("키워드 검색 (작업 설명, 교훈 등에서 검색)"),
+    keyword: z.string().optional().describe("키워드 검색"),
   },
   async (args) => {
     if (args.keyword) {
@@ -376,18 +368,13 @@ const queryWorkJournalTool = tool(
     }
 
     const { recent, digest } = getSmartContext(args.task_type || "");
-
     const parts: string[] = [];
 
     if (digest.total_count > 0) {
       parts.push(`📊 ${digest.task_type || "전체"} 작업 요약 (총 ${digest.total_count}건):`);
       parts.push(`  사용한 Skill: ${digest.skills_used.join(", ")}`);
-      if (digest.common_lessons.length > 0) {
-        parts.push(`  반복 교훈: ${digest.common_lessons.join("; ")}`);
-      }
-      if (digest.common_feedback.length > 0) {
-        parts.push(`  반복 피드백: ${digest.common_feedback.join("; ")}`);
-      }
+      if (digest.common_lessons.length > 0) parts.push(`  반복 교훈: ${digest.common_lessons.join("; ")}`);
+      if (digest.common_feedback.length > 0) parts.push(`  반복 피드백: ${digest.common_feedback.join("; ")}`);
     }
 
     if (recent.length > 0) {
@@ -402,13 +389,12 @@ const queryWorkJournalTool = tool(
     }
 
     return { content: [{ type: "text" as const, text: parts.join("\n") }] };
-  },
-  { annotations: { readOnlyHint: true } }
+  }
 );
 
-const addFeedbackTool = tool(
+ragMcpServer.tool(
   "add_feedback_to_journal",
-  "가장 최근 작업 기록에 사용자 피드백과 교훈을 추가합니다. 사용자가 결과에 대해 반응하면 호출하세요.",
+  "가장 최근 작업 기록에 사용자 피드백과 교훈을 추가합니다.",
   {
     journal_id: z.number().int().describe("작업 일지 ID"),
     feedback: z.string().describe("사용자 피드백 내용"),
@@ -421,29 +407,3 @@ const addFeedbackTool = tool(
     };
   }
 );
-
-// ==============================
-// MCP Server 생성
-// ==============================
-
-export const ragMcpServer = createSdkMcpServer({
-  name: "rag",
-  version: "3.0.0",
-  tools: [
-    // 검색 도구
-    searchDocuments,
-    getStatus,
-    listDocs,
-    deleteDocs,
-    // 기록 도구
-    saveUserIntent,
-    logTaskExecution,
-    getHistory,
-    getIntents,
-    // 파일 생성: Agent가 Bash + Python으로 직접 생성 (MCP 도구 제거됨)
-    // 작업 학습 일지
-    saveWorkJournalTool,
-    queryWorkJournalTool,
-    addFeedbackTool,
-  ],
-});

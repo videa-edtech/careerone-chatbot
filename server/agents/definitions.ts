@@ -1,23 +1,24 @@
 /**
- * Agent Definitions for Mini-RAG — Multi-Agent Architecture
+ * Agent Definitions for Mini-RAG — DeepSeek V4 Flash 마이그레이션 버전
  *
- * 10 specialized agents, each with domain-specific Skills embedded.
- * Skills are loaded by skill-loader at startup (no settingSources needed).
+ * @anthropic-ai/claude-agent-sdk의 AgentDefinition 제거
+ * → LangGraph createReactAgent 기반 AgentSpec으로 교체
  *
- * Agent Architecture:
- * - rag-search       : 문서 검색 + 답변
- * - web-research     : 웹 리서치
- * - file-analyst     : 파일 분석
- * - memory           : 의도/기억
- * - doc-writer       : 문서 작성 (보고서, 이메일, 회의록 등)
- * - presentation-maker: PPT 생성
- * - spreadsheet-maker: 엑셀 생성
- * - business-analyst  : 전략/재무/경쟁사/시장/경영진 보고
- * - hr-specialist     : 채용/교육/평가/변화관리
- * - operations-support: PM/법무/CS/번역/품질
+ * 11개 전문 에이전트, 각자 도메인 Skills 임베딩.
  */
-import type { AgentDefinition } from "@anthropic-ai/claude-agent-sdk";
 import { buildPromptWithSkills } from "./skill-loader.js";
+
+// ==============================
+// AgentSpec 타입 정의 (AgentDefinition 대체)
+// ==============================
+
+export interface AgentSpec {
+  name: string;
+  description: string;
+  prompt: string;
+  tools: string[];   // 허용 도구 이름 목록 (필터링용)
+  model: string;     // "deepseek-v4-flash"
+}
 
 // ==============================
 // 기본 프롬프트 (Skills 주입 전)
@@ -38,20 +39,19 @@ const RAG_SEARCH_PROMPT = `당신은 문서 검색 및 답변 전문가입니다
 ## 규칙
 - 검색 결과에 없는 내용은 절대 지어내지 마세요
 - 마크다운 서식 활용 (표, 목록, 코드 블록)
-- **사용자의 언어로 답변하세요.** 사용자가 사용한 언어와 동일한 언어로 답변합니다.`;
+- **사용자의 언어로 답변하세요.**`;
 
 const WEB_RESEARCH_PROMPT = `당신은 웹 리서치 전문가입니다.
 
 ## 작업 절차
 1. WebSearch로 사용자 질문 관련 웹 결과를 검색하세요
-2. 유용한 결과가 있으면 WebFetch 또는 fetch로 상세 내용을 가져오세요
+2. 유용한 결과가 있으면 WebFetch로 상세 내용을 가져오세요
 3. 핵심 내용을 요약하여 답변하세요
 4. 출처 규칙을 따르세요: [제목](URL)
 
 ## 규칙
 - 검색 결과를 있는 그대로 전달하세요 (지어내기 금지)
-- 여러 소스를 비교하여 신뢰성을 높이세요
-- **사용자의 언어로 답변하세요.** 사용자가 사용한 언어와 동일한 언어로 답변합니다.`;
+- **사용자의 언어로 답변하세요.**`;
 
 const FILE_ANALYST_PROMPT = `당신은 파일 분석 전문가입니다.
 
@@ -70,138 +70,80 @@ const MEMORY_PROMPT = `당신은 사용자 프로파일링 및 지식 관리 전
 ## 핵심 역할: 사용자를 기억하고 이해하기
 
 ### 1. 사용자 프로필 자동 감지 및 저장
-대화에서 다음을 감지하면 **즉시** 지식 그래프에 저장:
-- 이름, 역할, 부서 → Entity "User" + Observations
-- 회사명, 산업, 사업 영역 → Entity "Company" + Observations
-- 업무 선호도 (포맷, 스타일, 언어) → Entity "WorkPattern" + Observations
-- 프로젝트, 마감일, 협업자 → Entity "Project" + Observations
-- 관계: User → works_at → Company, User → prefers → WorkPattern
+대화에서 다음을 감지하면 **즉시** 저장:
+- 이름, 역할, 부서 → Entity "User"
+- 회사명, 산업 → Entity "Company"
+- 업무 선호도 → Entity "WorkPattern"
 
 ### 2. 의도/목표 저장
-- "~하려고 해", "~이 목표야" → save_user_intent (MD 파일)
-- 진행 상태 업데이트 ("다 했어" → status: done)
+- "~하려고 해" → save_user_intent
+- 진행 상태 업데이트
 
-### 3. 사용자 컨텍스트 조회
-- 요청 시 search_nodes로 사용자 정보 검색
-- read_graph로 전체 지식 그래프 조회
-- 이전 대화/의도 목록 제공
-
-### 4. 피드백 기록
-- "좋았어", "다음엔 ~해줘" → add_observations (WorkPattern)
-- 작업 피드백 → add_feedback_to_journal
+### 3. 피드백 기록
+- "좋았어", "다음엔 ~해줘" → add_feedback_to_journal
 
 ## 저장 규칙
-- 민감 정보 (급여, 개인 연락처) 저장 금지
-- "잊어줘", "삭제해줘" → delete_entities/delete_observations
-- 같은 정보 중복 저장 X → 먼저 search_nodes로 확인`;
-
-// ==============================
-// 신규 전문 에이전트 프롬프트
-// ==============================
+- 민감 정보 저장 금지
+- 중복 저장 방지 — 먼저 조회 후 저장`;
 
 const DOC_WRITER_PROMPT = `당신은 전문 문서 작성가입니다.
 
 ## 전문 분야
-보고서, 제안서, 이메일, 회의록, 블로그, 에세이, 기술 문서, 학술 논문
-
-## 파일 생성 방법: 코드를 직접 작성하고 Bash로 실행
-
-1. Python 또는 Node.js 스크립트를 Write로 작성
-2. Bash로 실행 (python script.py 또는 node script.js)
-3. 출력 파일은 data/output/ 디렉토리에 저장
-
-### 설치된 라이브러리
-**Python**: python-docx, reportlab, Pillow
-**Node.js**: docx (docx-js)
+보고서, 제안서, 이메일, 회의록, 블로그, 에세이, 기술 문서
 
 ## 작업 절차 (순서 중요!)
 1. **search_documents로 RAG 검색 — 반드시 먼저 실행!**
-   - 주제 관련 키워드로 2~3회 검색
-   - 검색 결과의 실제 데이터를 문서에 반영
-   - 검색 결과가 없으면 사용자에게 관련 자료 부족을 알림
 2. query_work_journal로 이전 유사 작업 기록 확인
-3. 요청에 맞는 콘텐츠 프레임워크 선택 (아래 Skills 참고)
-4. 검색된 자료 + 프레임워크로 코드 작성 → Bash 실행
+3. 요청에 맞는 콘텐츠 프레임워크 선택
+4. **create_docx 도구를 직접 호출하여 Word 파일 생성** (Bash 사용 금지!)
 5. save_work_journal로 작업 기록
-6. 파일 경로를 /api/files/파일명 형태로 보고
+6. 파일 경로(/api/files/파일명)를 응답에 반드시 포함
 
-⚠️ RAG 검색 없이 일반 지식으로만 문서를 작성하지 마세요. 인덱싱된 자료가 반영되어야 합니다.`;
+⚠️ create_docx 도구를 반드시 호출하세요. "만들었습니다"고만 말하고 도구 호출을 생략하면 안 됩니다.
+⚠️ RAG 검색 없이 일반 지식으로만 문서를 작성하지 마세요.`;
 
 const PRESENTATION_MAKER_PROMPT = `당신은 전문 프레젠테이션 제작자입니다.
 
 ## 전문 분야
-IR 피치덱, 사업 보고 PPT, 교육 자료, 크리에이티브 프레젠테이션
-
-## 파일 생성 방법
-1. Python (python-pptx) 또는 Node.js (pptxgenjs) 스크립트를 Write로 작성
-2. Bash로 실행
-3. 출력: data/output/
-
-### 설치된 라이브러리
-**Python**: python-pptx, Pillow
-**Node.js**: pptxgenjs
+IR 피치덱, 사업 보고 PPT, 교육 자료
 
 ## 작업 절차 (순서 중요!)
 1. **search_documents로 RAG 검색 — 반드시 먼저 실행!**
-   - 주제 관련 키워드로 2~3회 검색하여 실제 데이터 수집
-   - 검색 결과를 PPT 콘텐츠에 반영
 2. query_work_journal로 이전 PPT 작업 기록 확인
-3. PPT 유형 결정 (ppt-selector Skill 참고)
-4. 디자인 규칙 (ppt-design-rules Skill) 적용
-5. 검색된 자료 + pptx-official Skill 워크플로우로 코드 작성 → 실행
-6. save_work_journal 기록
-7. /api/files/파일명 보고
+3. PPT 유형 결정
+4. **create_pptx 도구를 직접 호출하여 PowerPoint 파일 생성** (Bash 사용 금지!)
+5. save_work_journal 기록
+6. 파일 경로(/api/files/파일명)를 응답에 반드시 포함
 
-⚠️ RAG 검색 없이 일반 지식으로만 PPT를 만들지 마세요.`;
+⚠️ create_pptx 도구를 반드시 호출하세요. 도구 호출 없이 "만들었습니다"고만 말하면 안 됩니다.`;
 
 const SPREADSHEET_MAKER_PROMPT = `당신은 전문 스프레드시트 제작자입니다.
 
 ## 전문 분야
-대시보드, 데이터 테이블, 재무 모델, 분석 시트
-
-## 파일 생성 방법
-1. Python (openpyxl 또는 xlsxwriter) 스크립트를 Write로 작성
-2. Bash로 실행
-3. 출력: data/output/
-
-### 설치된 라이브러리
-**Python**: openpyxl, xlsxwriter
+대시보드, 데이터 테이블, 재무 모델
 
 ## 작업 절차 (순서 중요!)
 1. **search_documents로 RAG 검색 — 반드시 먼저 실행!**
-   - 주제 관련 키워드로 2~3회 검색하여 실제 데이터 수집
-   - 검색 결과를 엑셀 데이터에 반영
 2. query_work_journal로 이전 엑셀 작업 기록 확인
-3. 엑셀 유형 결정 (excel-selector Skill 참고)
-4. 디자인 규칙 (excel-design-rules Skill) 적용
-5. 검색된 자료 + xlsx-official Skill 워크플로우로 코드 작성 → 실행
-6. save_work_journal 기록
-7. /api/files/파일명 보고
+3. 엑셀 유형 결정
+4. **create_excel 도구를 직접 호출하여 Excel 파일 생성** (Bash 사용 금지!)
+5. save_work_journal 기록
+6. 파일 경로(/api/files/파일명)를 응답에 반드시 포함
 
-⚠️ RAG 검색 없이 일반 지식으로만 엑셀을 만들지 마세요.`;
+⚠️ create_excel 도구를 반드시 호출하세요. 도구 호출 없이 "만들었습니다"고만 말하면 안 됩니다.`;
 
 const BUSINESS_ANALYST_PROMPT = `당신은 전문 비즈니스 분석가입니다.
 
 ## 전문 분야
 경쟁사 분석, 시장 조사, SWOT, 전략 기획, 재무 분석,
-경영진 보고, 이사회 보고, 시나리오 분석, 제품 기획, 로드맵, 매출 분석
+경영진 보고, 시나리오 분석, 제품 기획, 로드맵
 
 ## 작업 절차 (순서 중요!)
 1. **search_documents로 RAG 검색 — 반드시 먼저 실행!**
-   - 분석 주제 관련 키워드로 2~3회 검색
-   - 인덱싱된 내부 자료를 분석의 기초 데이터로 활용
 2. query_work_journal로 이전 분석 작업 기록 확인
-3. 분석 프레임워크 선택 (아래 Skills 참고)
-4. 검색 결과 + WebSearch로 추가 데이터 수집
-5. 분석 실행 (필요 시 엑셀/PPT는 해당 에이전트에 위임 요청)
-6. 마크다운으로 분석 결과 보고
-7. 파일 생성이 필요하면 Python 코드 → Bash 실행
-8. save_work_journal 기록
-
-## 규칙
-- 데이터와 사실 기반 분석 (추측 최소화)
-- 숫자에 출처/기준 명시
-- 비교 기준 항상 제시 (전년, 전월, 목표 대비)`;
+3. 분석 프레임워크 선택
+4. 분석 실행
+5. save_work_journal 기록`;
 
 const HR_SPECIALIST_PROMPT = `당신은 HR/HRD 전문가입니다.
 
@@ -211,15 +153,10 @@ const HR_SPECIALIST_PROMPT = `당신은 HR/HRD 전문가입니다.
 
 ## 작업 절차
 1. query_work_journal로 이전 HR 작업 기록 확인
-2. HR 프레임워크 선택 (아래 Skills 참고)
+2. HR 프레임워크 선택
 3. search_documents로 관련 자료 검색
-4. 결과 마크다운 보고 또는 문서 생성 (Write + Bash)
-5. save_work_journal 기록
-
-## 규칙
-- 법적 주의사항 고지 (채용 차별, 개인정보 등)
-- 문화적 맥락 고려 (한국 노동법/관행)
-- 실행 가능한 구체적 산출물 제공`;
+4. 결과 마크다운 보고 또는 문서 생성
+5. save_work_journal 기록`;
 
 const EDUCATION_SPECIALIST_PROMPT = `당신은 교육 전문가 (AIED 특화 + 직무분석/미래일자리)입니다.
 
@@ -231,27 +168,14 @@ const EDUCATION_SPECIALIST_PROMPT = `당신은 교육 전문가 (AIED 특화 + �
 
 ## 작업 절차 (순서 중요!)
 1. **search_documents로 RAG 검색 — 반드시 먼저 실행!**
-   - 교육 이력, 자격증, 경력 데이터 검색
-   - 엑셀 데이터가 있으면 해당 사람의 정보를 정확히 추출
 2. query_work_journal로 이전 교육 작업 기록 확인
-3. 교육/분석 프레임워크 선택 (아래 Skills 참고)
+3. 교육/분석 프레임워크 선택
 4. 설계/기획/분석 결과를 마크다운 또는 문서로 제작
-5. 파일 생성이 필요하면 Python 코드 → Bash 실행
-6. save_work_journal 기록
-
-## 직무 분석 파이프라인
-교육 이력 → 직무 분석 → 교육 설계 → 미래 일자리 요청 시:
-1. **역량 추출**: 교육/자격/경력 데이터에서 보유 역량과 수준 추출 (career-pathway-analyzer)
-2. **갭 분석**: 목표 직무와의 역량 차이 산출 (skills-gap-analyzer)
-3. **교육 설계**: 갭 기반 맞춤 교육 과정 설계 (course-design, curriculum-builder)
-4. **미래 일자리**: 보유 역량 + 시장 트렌드 기반 추천 (future-job-recommender)
+5. save_work_journal 기록
 
 ## 규칙
 - 학습목표는 반드시 관찰 가능한 동사 사용 (Bloom's Taxonomy)
-- 평가는 학습목표와 정렬 (Alignment)
-- 학습자 중심 설계 (교수자 중심 X)
-- AI 교육 설계 시 윤리/개인정보 고려
-- **사용자의 언어로 답변하세요.** 사용자가 사용한 언어와 동일한 언어로 답변합니다.`;
+- **사용자의 언어로 답변하세요.**`;
 
 const OPERATIONS_SUPPORT_PROMPT = `당신은 운영/지원 업무 전문가입니다.
 
@@ -261,15 +185,10 @@ const OPERATIONS_SUPPORT_PROMPT = `당신은 운영/지원 업무 전문가입�
 
 ## 작업 절차
 1. query_work_journal로 이전 작업 기록 확인
-2. 도메인별 프레임워크 선택 (아래 Skills 참고)
+2. 도메인별 프레임워크 선택
 3. search_documents로 관련 자료 검색
-4. 결과 마크다운 보고 또는 문서 생성 (Write + Bash)
-5. save_work_journal 기록
-
-## 규칙
-- 법무 관련: 법적 조언이 아닌 템플릿/체크리스트 제공 명시
-- 번역: 전문 용어 일관성 유지, 원어 병기
-- PM: 실행 가능한 WBS/타임라인 제공`;
+4. 결과 마크다운 보고 또는 문서 생성
+5. save_work_journal 기록`;
 
 // ==============================
 // 에이전트별 Skills 매핑
@@ -281,106 +200,46 @@ const AGENT_SKILLS: Record<string, string[]> = {
   "file-analyst": [],
   memory: ["intent-tracking", "user-profiling"],
 
-  // 문서 작성 에이전트
   "doc-writer": [
-    "docx-official",
-    "pdf-official",
-    "writing-selector",
-    "pyramid-scqa",
-    "problem-solution-benefit",
-    "spin-framework",
-    "amazon-prfaq",
-    "bluf-writing",
-    "executive-summary",
-    "star-framework",
-    "technical-document",
-    "imrad-academic",
-    "email-professional",
-    "meeting-minutes",
-    "blog-seo",
-    "narrative-essay",
-    "three-act-story",
-    "aida-marketing",
-    "pas-copywriting",
-    "storybrand",
-    "show-dont-tell",
-    "work-journal",
+    "docx-official", "pdf-official", "writing-selector",
+    "pyramid-scqa", "problem-solution-benefit", "spin-framework",
+    "amazon-prfaq", "bluf-writing", "executive-summary", "star-framework",
+    "technical-document", "imrad-academic", "email-professional",
+    "meeting-minutes", "blog-seo", "narrative-essay", "three-act-story",
+    "aida-marketing", "pas-copywriting", "storybrand", "show-dont-tell", "work-journal",
   ],
 
-  // PPT 에이전트
   "presentation-maker": [
-    "pptx-official",
-    "ppt-selector",
-    "pitch-deck",
-    "status-report-ppt",
-    "training-slides",
-    "creative-presentation",
-    "ppt-design-rules",
-    "work-journal",
+    "pptx-official", "ppt-selector", "pitch-deck", "status-report-ppt",
+    "training-slides", "creative-presentation", "ppt-design-rules", "work-journal",
   ],
 
-  // 엑셀 에이전트
   "spreadsheet-maker": [
-    "xlsx-official",
-    "excel-selector",
-    "excel-dashboard",
-    "excel-data-table",
-    "excel-design-rules",
-    "work-journal",
+    "xlsx-official", "excel-selector", "excel-dashboard",
+    "excel-data-table", "excel-design-rules", "work-journal",
   ],
 
-  // 비즈니스 분석 에이전트
   "business-analyst": [
-    "competitor-analysis",
-    "strategic-planning",
-    "financial-report",
-    "data-analysis",
-    "executive-briefing",
-    "board-report",
-    "scenario-analysis",
-    "product-planning",
-    "roadmap-builder",
-    "revenue-analysis",
-    "work-journal",
+    "competitor-analysis", "strategic-planning", "financial-report",
+    "data-analysis", "executive-briefing", "board-report", "scenario-analysis",
+    "product-planning", "roadmap-builder", "revenue-analysis", "work-journal",
   ],
 
-  // HR 전문 에이전트
   "hr-specialist": [
-    "hr-recruitment",
-    "change-management",
-    "org-design",
-    "work-journal",
+    "hr-recruitment", "change-management", "org-design", "work-journal",
   ],
 
-  // 교육 전문 에이전트 (AIED 특화 + 직무분석/미래일자리)
   "education-specialist": [
-    "course-design",
-    "learning-assessment",
-    "curriculum-builder",
-    "lecture-script",
-    "textbook-planning",
-    "ai-education-design",
-    "education-business",
-    "education-content",
-    "hrd-training",
-    "training-slides",
-    "career-pathway-analyzer",
-    "skills-gap-analyzer",
-    "future-job-recommender",
-    "work-journal",
+    "course-design", "learning-assessment", "curriculum-builder",
+    "lecture-script", "textbook-planning", "ai-education-design",
+    "education-business", "education-content", "hrd-training", "training-slides",
+    "career-pathway-analyzer", "skills-gap-analyzer", "future-job-recommender", "work-journal",
   ],
 
-  // 운영/지원 에이전트
   "operations-support": [
-    "project-management",
-    "legal-compliance",
-    "customer-service",
-    "customer-success",
-    "translation-guide",
-    "quality-management",
-    "compliance-audit",
-    "sales-outreach",
-    "work-journal",
+    "project-management", "legal-compliance", "customer-service",
+    "customer-success", "translation-guide", "quality-management",
+    "compliance-audit", "sales-outreach", "work-journal",
   ],
 };
 
@@ -389,151 +248,14 @@ const AGENT_SKILLS: Record<string, string[]> = {
 // ==============================
 
 const FILE_CREATION_TOOLS = [
-  "Bash",
-  "Write",
-  "Read",
-  "Glob",
-  "mcp__rag__search_documents",
-  "mcp__rag__query_work_journal",
-  "mcp__rag__save_work_journal",
-  "mcp__rag__add_feedback_to_journal",
-  "mcp__rag__log_task_execution",
+  "Bash", "Write", "Read", "Glob",
+  "search_documents", "query_work_journal", "save_work_journal",
+  "add_feedback_to_journal", "log_task_execution",
+  "create_docx", "create_pptx", "create_excel",
 ];
 
 // ==============================
-// 초기화된 에이전트 (Skills 주입 완료)
-// ==============================
-
-export let ragSearchAgent: AgentDefinition;
-export let webResearchAgent: AgentDefinition;
-export let fileAnalystAgent: AgentDefinition;
-export let memoryAgent: AgentDefinition;
-export let docWriterAgent: AgentDefinition;
-export let presentationMakerAgent: AgentDefinition;
-export let spreadsheetMakerAgent: AgentDefinition;
-export let businessAnalystAgent: AgentDefinition;
-export let hrSpecialistAgent: AgentDefinition;
-export let educationSpecialistAgent: AgentDefinition;
-export let operationsSupportAgent: AgentDefinition;
-
-/**
- * 서버 시작 시 호출 — 모든 에이전트 프롬프트에 Skills 내용을 주입
- */
-export async function initAgents(): Promise<void> {
-  console.log("[Agents] Loading skills into 10 agent prompts...");
-
-  ragSearchAgent = {
-    description: "인덱싱된 문서에서 검색하여 답변을 생성합니다.",
-    prompt: await buildPromptWithSkills(RAG_SEARCH_PROMPT, AGENT_SKILLS["rag-search"]),
-    tools: [
-      "mcp__rag__search_documents",
-      "mcp__rag__get_document_status",
-      "mcp__rag__list_documents",
-    ],
-    model: "haiku",
-  };
-
-  webResearchAgent = {
-    description: "웹에서 최신 정보를 검색하고 수집합니다.",
-    prompt: await buildPromptWithSkills(WEB_RESEARCH_PROMPT, AGENT_SKILLS["web-research"]),
-    tools: ["WebSearch", "WebFetch", "mcp__fetch__fetch"],
-    model: "haiku",
-  };
-
-  fileAnalystAgent = {
-    description: "로컬 파일을 직접 읽고 분석합니다.",
-    prompt: FILE_ANALYST_PROMPT,
-    tools: ["Read", "Glob", "Grep"],
-    model: "haiku",
-  };
-
-  memoryAgent = {
-    description: "사용자의 의도와 목표를 추적하고 저장합니다.",
-    prompt: await buildPromptWithSkills(MEMORY_PROMPT, AGENT_SKILLS["memory"]),
-    tools: [
-      "mcp__rag__save_user_intent",
-      "mcp__rag__get_user_intents",
-      "mcp__rag__get_conversation_history",
-      "mcp__rag__log_task_execution",
-      "mcp__memory__create_entities",
-      "mcp__memory__create_relations",
-      "mcp__memory__add_observations",
-      "mcp__memory__search_nodes",
-      "mcp__memory__read_graph",
-    ],
-    model: "haiku",
-  };
-
-  // ==============================
-  // 전문 도메인 에이전트들
-  // ==============================
-
-  docWriterAgent = {
-    description: "보고서, 제안서, 이메일, 회의록, 블로그, 에세이 등 다양한 문서를 작성하고 DOCX/PDF를 생성합니다.",
-    prompt: await buildPromptWithSkills(DOC_WRITER_PROMPT, AGENT_SKILLS["doc-writer"]),
-    tools: FILE_CREATION_TOOLS,
-    model: "haiku",
-  };
-
-  presentationMakerAgent = {
-    description: "피치덱, 보고 PPT, 교육 자료, 크리에이티브 프레젠테이션을 제작합니다.",
-    prompt: await buildPromptWithSkills(PRESENTATION_MAKER_PROMPT, AGENT_SKILLS["presentation-maker"]),
-    tools: FILE_CREATION_TOOLS,
-    model: "haiku",
-  };
-
-  spreadsheetMakerAgent = {
-    description: "대시보드, 데이터 테이블, 재무 모델, 분석 시트 엑셀을 제작합니다.",
-    prompt: await buildPromptWithSkills(SPREADSHEET_MAKER_PROMPT, AGENT_SKILLS["spreadsheet-maker"]),
-    tools: FILE_CREATION_TOOLS,
-    model: "haiku",
-  };
-
-  businessAnalystAgent = {
-    description: "경쟁사 분석, 시장조사, SWOT, 전략 기획, 재무 분석, 경영진 보고, 시나리오 분석, 제품 기획을 수행합니다.",
-    prompt: await buildPromptWithSkills(BUSINESS_ANALYST_PROMPT, AGENT_SKILLS["business-analyst"]),
-    tools: [
-      ...FILE_CREATION_TOOLS,
-      "WebSearch",
-      "WebFetch",
-    ],
-    model: "haiku",
-  };
-
-  hrSpecialistAgent = {
-    description: "채용공고, 면접질문, 성과평가, 온보딩, 조직 설계, 변화관리를 수행합니다.",
-    prompt: await buildPromptWithSkills(HR_SPECIALIST_PROMPT, AGENT_SKILLS["hr-specialist"]),
-    tools: FILE_CREATION_TOOLS,
-    model: "haiku",
-  };
-
-  educationSpecialistAgent = {
-    description: "교육과정 설계, 커리큘럼, 학습 평가, 인강 스크립트, 교재 기획, AI 교육 설계, 교육 사업 기획을 수행합니다.",
-    prompt: await buildPromptWithSkills(EDUCATION_SPECIALIST_PROMPT, AGENT_SKILLS["education-specialist"]),
-    tools: [
-      ...FILE_CREATION_TOOLS,
-      "WebSearch",
-      "WebFetch",
-    ],
-    model: "haiku",
-  };
-
-  operationsSupportAgent = {
-    description: "프로젝트 관리, 법무/컴플라이언스, 고객서비스, 번역, 품질관리, 영업지원을 수행합니다.",
-    prompt: await buildPromptWithSkills(OPERATIONS_SUPPORT_PROMPT, AGENT_SKILLS["operations-support"]),
-    tools: FILE_CREATION_TOOLS,
-    model: "haiku",
-  };
-
-  // 총 Skills 수 계산
-  const totalSkills = new Set(
-    Object.values(AGENT_SKILLS).flat()
-  ).size;
-  console.log(`[Agents] All 11 agents initialized (${totalSkills} unique skills loaded)`);
-}
-
-// ==============================
-// 에이전트 메타데이터 (동적 빌드용)
+// 에이전트 메타데이터
 // ==============================
 
 const AGENT_META: Record<string, {
@@ -545,86 +267,195 @@ const AGENT_META: Record<string, {
   "rag-search": {
     description: "인덱싱된 문서에서 검색하여 답변을 생성합니다.",
     prompt: RAG_SEARCH_PROMPT,
-    tools: ["mcp__rag__search_documents", "mcp__rag__get_document_status", "mcp__rag__list_documents"],
-    model: "haiku",
+    tools: ["search_documents", "get_document_status", "list_documents"],
+    model: "deepseek-v4-flash",
   },
   "web-research": {
     description: "웹에서 최신 정보를 검색하고 수집합니다.",
     prompt: WEB_RESEARCH_PROMPT,
-    tools: ["WebSearch", "WebFetch", "mcp__fetch__fetch"],
-    model: "haiku",
+    tools: ["WebSearch", "WebFetch"],
+    model: "deepseek-v4-flash",
   },
   "file-analyst": {
     description: "로컬 파일을 직접 읽고 분석합니다.",
     prompt: FILE_ANALYST_PROMPT,
     tools: ["Read", "Glob", "Grep"],
-    model: "haiku",
+    model: "deepseek-v4-flash",
   },
   memory: {
     description: "사용자의 의도와 목표를 추적하고 저장합니다.",
     prompt: MEMORY_PROMPT,
     tools: [
-      "mcp__rag__save_user_intent", "mcp__rag__get_user_intents",
-      "mcp__rag__get_conversation_history", "mcp__rag__log_task_execution",
-      "mcp__memory__create_entities", "mcp__memory__create_relations",
-      "mcp__memory__add_observations", "mcp__memory__search_nodes", "mcp__memory__read_graph",
+      "save_user_intent", "get_user_intents",
+      "get_conversation_history", "log_task_execution",
     ],
-    model: "haiku",
+    model: "deepseek-v4-flash",
   },
   "doc-writer": {
     description: "보고서, 제안서, 이메일, 회의록, 블로그, 에세이 등 DOCX/PDF를 생성합니다.",
     prompt: DOC_WRITER_PROMPT,
     tools: FILE_CREATION_TOOLS,
-    model: "haiku",
+    model: "deepseek-v4-flash",
   },
   "presentation-maker": {
-    description: "피치덱, 보고 PPT, 교육 자료, 크리에이티브 프레젠테이션을 제작합니다.",
+    description: "피치덱, 보고 PPT, 교육 자료, 프레젠테이션을 제작합니다.",
     prompt: PRESENTATION_MAKER_PROMPT,
     tools: FILE_CREATION_TOOLS,
-    model: "haiku",
+    model: "deepseek-v4-flash",
   },
   "spreadsheet-maker": {
     description: "대시보드, 데이터 테이블, 재무 모델 엑셀을 제작합니다.",
     prompt: SPREADSHEET_MAKER_PROMPT,
     tools: FILE_CREATION_TOOLS,
-    model: "haiku",
+    model: "deepseek-v4-flash",
   },
   "business-analyst": {
     description: "전략/재무/경쟁사/시장 분석, 경영진 보고, 시나리오, 제품 기획을 수행합니다.",
     prompt: BUSINESS_ANALYST_PROMPT,
     tools: [...FILE_CREATION_TOOLS, "WebSearch", "WebFetch"],
-    model: "haiku",
+    model: "deepseek-v4-flash",
   },
   "hr-specialist": {
     description: "채용, 면접, 평가, 온보딩, 조직 설계, 변화관리를 수행합니다.",
     prompt: HR_SPECIALIST_PROMPT,
     tools: FILE_CREATION_TOOLS,
-    model: "haiku",
+    model: "deepseek-v4-flash",
   },
   "education-specialist": {
     description: "교육과정, 커리큘럼, 학습 평가, 인강, 교재, AI 교육 설계를 수행합니다.",
     prompt: EDUCATION_SPECIALIST_PROMPT,
     tools: [...FILE_CREATION_TOOLS, "WebSearch", "WebFetch"],
-    model: "haiku",
+    model: "deepseek-v4-flash",
   },
   "operations-support": {
     description: "프로젝트 관리, 법무, 고객서비스, 번역, 품질관리, 영업지원을 수행합니다.",
     prompt: OPERATIONS_SUPPORT_PROMPT,
     tools: FILE_CREATION_TOOLS,
-    model: "haiku",
+    model: "deepseek-v4-flash",
   },
 };
 
+// ==============================
+// 초기화된 에이전트 (하위 호환성)
+// ==============================
+
+export let ragSearchAgent: AgentSpec;
+export let webResearchAgent: AgentSpec;
+export let fileAnalystAgent: AgentSpec;
+export let memoryAgent: AgentSpec;
+export let docWriterAgent: AgentSpec;
+export let presentationMakerAgent: AgentSpec;
+export let spreadsheetMakerAgent: AgentSpec;
+export let businessAnalystAgent: AgentSpec;
+export let hrSpecialistAgent: AgentSpec;
+export let educationSpecialistAgent: AgentSpec;
+export let operationsSupportAgent: AgentSpec;
+
+/**
+ * 서버 시작 시 호출 — 모든 에이전트 프롬프트에 Skills 내용을 주입
+ */
+export async function initAgents(): Promise<void> {
+  console.log("[Agents] Loading skills into 11 agent prompts (DeepSeek V4 Flash)...");
+
+  ragSearchAgent = {
+    name: "rag-search",
+    description: "인덱싱된 문서에서 검색하여 답변을 생성합니다.",
+    prompt: await buildPromptWithSkills(RAG_SEARCH_PROMPT, AGENT_SKILLS["rag-search"]),
+    tools: AGENT_META["rag-search"].tools,
+    model: "deepseek-v4-flash",
+  };
+
+  webResearchAgent = {
+    name: "web-research",
+    description: "웹에서 최신 정보를 검색하고 수집합니다.",
+    prompt: await buildPromptWithSkills(WEB_RESEARCH_PROMPT, AGENT_SKILLS["web-research"]),
+    tools: AGENT_META["web-research"].tools,
+    model: "deepseek-v4-flash",
+  };
+
+  fileAnalystAgent = {
+    name: "file-analyst",
+    description: "로컬 파일을 직접 읽고 분석합니다.",
+    prompt: FILE_ANALYST_PROMPT,
+    tools: AGENT_META["file-analyst"].tools,
+    model: "deepseek-v4-flash",
+  };
+
+  memoryAgent = {
+    name: "memory",
+    description: "사용자의 의도와 목표를 추적하고 저장합니다.",
+    prompt: await buildPromptWithSkills(MEMORY_PROMPT, AGENT_SKILLS["memory"]),
+    tools: AGENT_META["memory"].tools,
+    model: "deepseek-v4-flash",
+  };
+
+  docWriterAgent = {
+    name: "doc-writer",
+    description: "보고서, 제안서, 이메일, 회의록, 블로그, 에세이 등 다양한 문서를 작성하고 DOCX/PDF를 생성합니다.",
+    prompt: await buildPromptWithSkills(DOC_WRITER_PROMPT, AGENT_SKILLS["doc-writer"]),
+    tools: FILE_CREATION_TOOLS,
+    model: "deepseek-v4-flash",
+  };
+
+  presentationMakerAgent = {
+    name: "presentation-maker",
+    description: "피치덱, 보고 PPT, 교육 자료, 크리에이티브 프레젠테이션을 제작합니다.",
+    prompt: await buildPromptWithSkills(PRESENTATION_MAKER_PROMPT, AGENT_SKILLS["presentation-maker"]),
+    tools: FILE_CREATION_TOOLS,
+    model: "deepseek-v4-flash",
+  };
+
+  spreadsheetMakerAgent = {
+    name: "spreadsheet-maker",
+    description: "대시보드, 데이터 테이블, 재무 모델, 분석 시트 엑셀을 제작합니다.",
+    prompt: await buildPromptWithSkills(SPREADSHEET_MAKER_PROMPT, AGENT_SKILLS["spreadsheet-maker"]),
+    tools: FILE_CREATION_TOOLS,
+    model: "deepseek-v4-flash",
+  };
+
+  businessAnalystAgent = {
+    name: "business-analyst",
+    description: "경쟁사 분석, 시장조사, SWOT, 전략 기획, 재무 분석, 경영진 보고, 시나리오 분석, 제품 기획을 수행합니다.",
+    prompt: await buildPromptWithSkills(BUSINESS_ANALYST_PROMPT, AGENT_SKILLS["business-analyst"]),
+    tools: [...FILE_CREATION_TOOLS, "WebSearch", "WebFetch"],
+    model: "deepseek-v4-flash",
+  };
+
+  hrSpecialistAgent = {
+    name: "hr-specialist",
+    description: "채용공고, 면접질문, 성과평가, 온보딩, 조직 설계, 변화관리를 수행합니다.",
+    prompt: await buildPromptWithSkills(HR_SPECIALIST_PROMPT, AGENT_SKILLS["hr-specialist"]),
+    tools: FILE_CREATION_TOOLS,
+    model: "deepseek-v4-flash",
+  };
+
+  educationSpecialistAgent = {
+    name: "education-specialist",
+    description: "교육과정 설계, 커리큘럼, 학습 평가, 인강 스크립트, 교재 기획, AI 교육 설계, 교육 사업 기획을 수행합니다.",
+    prompt: await buildPromptWithSkills(EDUCATION_SPECIALIST_PROMPT, AGENT_SKILLS["education-specialist"]),
+    tools: [...FILE_CREATION_TOOLS, "WebSearch", "WebFetch"],
+    model: "deepseek-v4-flash",
+  };
+
+  operationsSupportAgent = {
+    name: "operations-support",
+    description: "프로젝트 관리, 법무/컴플라이언스, 고객서비스, 번역, 품질관리, 영업지원을 수행합니다.",
+    prompt: await buildPromptWithSkills(OPERATIONS_SUPPORT_PROMPT, AGENT_SKILLS["operations-support"]),
+    tools: FILE_CREATION_TOOLS,
+    model: "deepseek-v4-flash",
+  };
+
+  const totalSkills = new Set(Object.values(AGENT_SKILLS).flat()).size;
+  console.log(`[Agents] All 11 agents initialized (${totalSkills} unique skills loaded) — DeepSeek V4 Flash`);
+}
+
 /**
  * 동적 에이전트 빌드 — 필요한 에이전트만 Skills 로드
- *
- * @param neededAgents - Skills를 포함할 에이전트 이름 목록
- * @returns 모든 11개 에이전트 (needed만 Skills 포함, 나머지는 기본 프롬프트)
  */
 export async function buildAgentsForQuery(
   neededAgents: string[]
-): Promise<Record<string, AgentDefinition>> {
-  const agents: Record<string, AgentDefinition> = {};
+): Promise<Record<string, AgentSpec>> {
+  const agents: Record<string, AgentSpec> = {};
   const needed = new Set(neededAgents);
 
   for (const [name, meta] of Object.entries(AGENT_META)) {
@@ -632,12 +463,13 @@ export async function buildAgentsForQuery(
     const includeSkills = needed.has(name) && skills.length > 0;
 
     agents[name] = {
+      name,
       description: meta.description,
       prompt: includeSkills
         ? await buildPromptWithSkills(meta.prompt, skills)
-        : meta.prompt, // Skills 없이 기본 프롬프트만
+        : meta.prompt,
       tools: meta.tools,
-      model: meta.model,
+      model: "deepseek-v4-flash",
     };
   }
 

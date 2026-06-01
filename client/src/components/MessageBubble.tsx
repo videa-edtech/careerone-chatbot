@@ -18,6 +18,43 @@ const FORMAT_ICONS: Record<string, string> = {
   text: "📃",
 };
 
+const EXT_ICONS: Record<string, string> = {
+  ".docx": "📝",
+  ".pdf": "📄",
+  ".pptx": "📊",
+  ".xlsx": "📗",
+};
+
+/** 메시지 텍스트에서 /api/files/... 링크를 추출 */
+function extractFileLinks(content: string): { name: string; url: string }[] {
+  const matches = [...content.matchAll(/\/api\/files\/([^\s\n"')]+)/g)];
+  return matches.map((m) => {
+    const encoded = m[1];
+    const name = decodeURIComponent(encoded);
+    return { name, url: `/api/files/${encoded}` };
+  });
+}
+
+function FileDownloadButton({ name, url }: { name: string; url: string }) {
+  const ext = name.slice(name.lastIndexOf(".")).toLowerCase();
+  const icon = EXT_ICONS[ext] || "📎";
+  return (
+    <a
+      href={url}
+      download={name}
+      className="inline-flex items-center gap-2 mt-3 px-3.5 py-2 bg-amber-glow/10 border border-amber-glow/30 rounded-xl text-sm font-body text-amber-glow hover:bg-amber-glow/20 hover:border-amber-glow/60 transition-colors"
+    >
+      <span>{icon}</span>
+      <span className="truncate max-w-[200px]">{name}</span>
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" className="shrink-0">
+        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+        <polyline points="7 10 12 15 17 10" />
+        <line x1="12" y1="15" x2="12" y2="3" />
+      </svg>
+    </a>
+  );
+}
+
 function SourceChip({ source }: { source: Source }) {
   const icon = FORMAT_ICONS[source.format] || "📎";
   const meta = source.metadata || {};
@@ -79,6 +116,19 @@ export default function MessageBubble({ message, isLast, isStreaming }: Props) {
             ))}
           </div>
         )}
+
+        {/* 생성된 파일 인라인 다운로드 버튼 */}
+        {!isUser && !isStreaming && (() => {
+          const links = extractFileLinks(message.content || "");
+          if (links.length === 0) return null;
+          return (
+            <div className="flex flex-col gap-1.5 mt-1 ml-1">
+              {links.map((f, i) => (
+                <FileDownloadButton key={i} name={f.name} url={f.url} />
+              ))}
+            </div>
+          );
+        })()}
       </div>
     </div>
   );

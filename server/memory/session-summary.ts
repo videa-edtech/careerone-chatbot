@@ -1,13 +1,12 @@
 /**
- * Session Summary — claude-mem 패턴 차용
+ * Session Summary — claude-mem 패턴 차용 (DeepSeek V4 Flash)
  *
- * 세션 종료 시 AI가 대화를 요약하여 저장.
- * 다음 세션 시작 시 이전 요약을 컨텍스트에 주입.
- *
- * 요약 구조: request / investigated / learned / completed / next_steps
+ * @anthropic-ai/sdk 제거 → deepseekClient (OpenAI 호환)로 교체
  */
 import db from "../db/connection.js";
-import Anthropic from "@anthropic-ai/sdk";
+import { deepseekClient } from "../llm/deepseek.js";
+
+const DEEPSEEK_MODEL = "deepseek-v4-flash";
 
 export interface SessionSummary {
   id?: number;
@@ -51,9 +50,6 @@ function stmts() {
   return _stmts;
 }
 
-/**
- * 세션 요약 저장 (upsert)
- */
 export function saveSessionSummary(summary: SessionSummary): void {
   stmts().upsert.run(
     summary.session_id,
@@ -65,43 +61,34 @@ export function saveSessionSummary(summary: SessionSummary): void {
   );
 }
 
-/**
- * 세션 요약 조회
- */
 export function getSessionSummary(sessionId: string): SessionSummary | null {
   return stmts().getBySession.get(sessionId) as SessionSummary | null;
 }
 
-/**
- * 최근 세션 요약 조회 (컨텍스트 주입용)
- */
 export function getRecentSummaries(limit = 3): SessionSummary[] {
   return stmts().getRecent.all(limit) as SessionSummary[];
 }
 
 /**
- * AI로 세션 요약 생성 (Haiku 직접 호출 — 비용 절감)
- *
- * Agent SDK가 아닌 Messages API 직접 호출로 빠르고 저렴하게 요약.
+ * AI로 세션 요약 생성 — DeepSeek V4 Flash 직접 호출
  */
 export async function generateSessionSummary(
   sessionId: string,
   messages: Array<{ role: string; content: string }>
 ): Promise<SessionSummary | null> {
-  if (messages.length < 2) return null; // 단순 인사는 요약 불필요
+  if (messages.length < 2) return null;
 
   try {
-    const client = new Anthropic();
-
-    // 대화 내용을 간결하게 정리 (최대 3000자)
     const conversation = messages
       .map((m) => `${m.role === "user" ? "사용자" : "AI"}: ${m.content.slice(0, 500)}`)
       .join("\n")
       .slice(0, 3000);
 
-    const response = await client.messages.create({
-      model: "claude-haiku-4-5-20251001",
+    const response = await deepseekClient.chat.completions.create({
+      model: DEEPSEEK_MODEL,
       max_tokens: 500,
+      // @ts-ignore — DeepSeek 전용
+      thinking: { type: "disabled" },
       messages: [
         {
           role: "user",
@@ -116,9 +103,8 @@ JSON으로 응답하세요:
       ],
     });
 
-    const text = response.content[0].type === "text" ? response.content[0].text : "";
+    const text = response.choices[0]?.message?.content ?? "";
 
-    // JSON 파싱 시도
     const jsonMatch = text.match(/\{[\s\S]*\}/);
     if (!jsonMatch) return null;
 
@@ -134,7 +120,7 @@ JSON으로 응답하세요:
     };
 
     saveSessionSummary(summary);
-    console.log(`[Summary] Session ${sessionId.slice(0, 8)} summarized`);
+    console.log(`[Summary] Session ${sessionId.slice(0, 8)} summarized (DeepSeek V4 Flash)`);
     return summary;
   } catch (e) {
     console.warn("[Summary] Failed to generate:", (e as Error).message?.slice(0, 60));
