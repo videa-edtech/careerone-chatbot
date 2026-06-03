@@ -14,9 +14,6 @@ import { getDocumentSummaries } from "../memory/document-summary.js";
 import { logTask } from "../memory/task-log.js";
 import { saveIntent, listIntents } from "../memory/intent-store.js";
 import {
-  listConversations,
-} from "../memory/conversation-store.js";
-import {
   saveWorkJournal,
   getSmartContext,
   searchWorkJournal,
@@ -256,30 +253,12 @@ ragMcpServer.tool(
   {
     limit: z.number().int().default(10).describe("조회할 대화 수"),
   },
-  async (args) => {
-    const convs = listConversations(args.limit) as Array<{
-      id: string;
-      title: string;
-      created_at: string;
-      updated_at: string;
-    }>;
-
-    if (convs.length === 0) {
-      return {
-        content: [
-          { type: "text" as const, text: "이전 대화 기록이 없습니다." },
-        ],
-      };
-    }
-
-    const list = convs
-      .map((c) => `- ${c.title} (${c.updated_at})`)
-      .join("\n");
+  async () => {
     return {
       content: [
         {
           type: "text" as const,
-          text: `최근 대화 ${convs.length}건:\n${list}`,
+          text: "대화 기록은 사용자 IP 컨텍스트가 있을 때만 조회할 수 있습니다.",
         },
       ],
     };

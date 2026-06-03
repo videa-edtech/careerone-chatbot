@@ -17,6 +17,8 @@ const PORT = parseInt(process.env.PORT || "3001");
 const DATA_PATH = process.env.DATA_PATH || "./data";
 const DOCS_PATH_ENV = process.env.DOCS_PATH || "./docs";
 
+app.set("trust proxy", true);
+
 // Ensure directories exist (use DATA_PATH for Render Persistent Disk support)
 await mkdir("uploads", { recursive: true });
 await mkdir(path.join(DATA_PATH, "memory/intents"), { recursive: true });

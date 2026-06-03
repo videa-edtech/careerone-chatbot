@@ -1,10 +1,11 @@
 import { Router, type Request, type Response } from "express";
 import { getDocumentStats, listDocuments, deleteDocument } from "../ingestion/indexer.js";
-import { listConversations, getConversation } from "../memory/conversation-store.js";
+import { listConversations, getConversationForUser } from "../memory/conversation-store.js";
 import { getTaskLog } from "../memory/task-log.js";
 import { listIntents } from "../memory/intent-store.js";
 import { getSessionMessages, getEvents } from "../memory/session-events.js";
 import { getSessionUsage, getTotalUsage } from "../memory/session-usage.js";
+import { getClientIp } from "../utils/client-ip.js";
 
 const router = Router();
 
@@ -40,12 +41,12 @@ router.get("/api/status", (_req: Request, res: Response) => {
 // Conversations
 router.get("/api/conversations", (req: Request, res: Response) => {
   const limit = parseInt(req.query.limit as string) || 20;
-  res.json(listConversations(limit));
+  res.json(listConversations(getClientIp(req), limit));
 });
 
 router.get("/api/conversations/:id", (req: Request, res: Response) => {
   const convId = req.params.id as string;
-  const conv = getConversation(convId);
+  const conv = getConversationForUser(convId, getClientIp(req));
   if (!conv) {
     res.status(404).json({ error: "Conversation not found" });
     return;
@@ -63,7 +64,13 @@ router.get("/api/conversations/:id", (req: Request, res: Response) => {
 
 // 세션 이벤트 로그 (디버깅/추적용)
 router.get("/api/conversations/:id/events", (req: Request, res: Response) => {
-  const events = getEvents(req.params.id as string);
+  const convId = req.params.id as string;
+  const conv = getConversationForUser(convId, getClientIp(req));
+  if (!conv) {
+    res.status(404).json({ error: "Conversation not found" });
+    return;
+  }
+  const events = getEvents(convId);
   res.json(events);
 });
 

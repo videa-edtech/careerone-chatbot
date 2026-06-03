@@ -91,6 +91,7 @@ export function initializeSchema(): void {
     CREATE TABLE IF NOT EXISTS conversations (
       id TEXT PRIMARY KEY,
       title TEXT,
+      user_ip TEXT NOT NULL DEFAULT 'unknown',
       messages JSON NOT NULL DEFAULT '[]',
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
@@ -193,6 +194,12 @@ export function initializeSchema(): void {
   } catch { /* 이미 존재하면 무시 */ }
   try {
     db.exec("CREATE INDEX IF NOT EXISTS idx_se_obs_type ON session_events(observation_type)");
+  } catch { /* 무시 */ }
+  try {
+    db.exec("ALTER TABLE conversations ADD COLUMN user_ip TEXT NOT NULL DEFAULT 'unknown'");
+  } catch { /* 이미 존재하면 무시 */ }
+  try {
+    db.exec("CREATE INDEX IF NOT EXISTS idx_conversations_user_ip_updated ON conversations(user_ip, updated_at DESC)");
   } catch { /* 무시 */ }
 
   // ==========================================

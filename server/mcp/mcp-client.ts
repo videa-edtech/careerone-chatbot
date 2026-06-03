@@ -29,7 +29,11 @@ import { PATHS } from "../config.js";
 // RAG 도구들 → LangChain DynamicStructuredTool
 // ==============================
 
-export function buildRagTools(): DynamicStructuredTool[] {
+export interface RagToolContext {
+  userIp?: string;
+}
+
+export function buildRagTools(context: RagToolContext = {}): DynamicStructuredTool[] {
   const searchDocumentsTool = new DynamicStructuredTool({
     name: "search_documents",
     description: "인덱싱된 문서에서 키워드/의미 검색을 수행합니다. 사용자 질문에 답하기 위해 관련 문서 청크를 찾을 때 사용하세요.",
@@ -162,7 +166,11 @@ export function buildRagTools(): DynamicStructuredTool[] {
       limit: z.number().int().default(10).describe("조회할 대화 수"),
     }),
     func: async (args) => {
-      const convs = listConversations(args.limit) as Array<{
+      if (!context.userIp) {
+        return "대화 기록은 사용자 IP 컨텍스트가 있을 때만 조회할 수 있습니다.";
+      }
+
+      const convs = listConversations(context.userIp, args.limit) as Array<{
         id: string; title: string; created_at: string; updated_at: string;
       }>;
       if (convs.length === 0) return "이전 대화 기록이 없습니다.";

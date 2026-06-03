@@ -23,7 +23,7 @@ export interface SessionSummary {
 let _stmts: {
   upsert: any;
   getBySession: any;
-  getRecent: any;
+  getRecentByUser: any;
 } | null = null;
 
 function stmts() {
@@ -42,8 +42,13 @@ function stmts() {
       getBySession: db.prepare(
         "SELECT * FROM session_summaries WHERE session_id = ?"
       ),
-      getRecent: db.prepare(
-        "SELECT * FROM session_summaries ORDER BY created_at DESC LIMIT ?"
+      getRecentByUser: db.prepare(
+        `SELECT s.*
+         FROM session_summaries s
+         INNER JOIN conversations c ON c.id = s.session_id
+         WHERE c.user_ip = ?
+         ORDER BY s.created_at DESC
+         LIMIT ?`
       ),
     };
   }
@@ -65,8 +70,8 @@ export function getSessionSummary(sessionId: string): SessionSummary | null {
   return stmts().getBySession.get(sessionId) as SessionSummary | null;
 }
 
-export function getRecentSummaries(limit = 3): SessionSummary[] {
-  return stmts().getRecent.all(limit) as SessionSummary[];
+export function getRecentSummaries(limit = 3, userIp = "unknown"): SessionSummary[] {
+  return stmts().getRecentByUser.all(userIp, limit) as SessionSummary[];
 }
 
 /**

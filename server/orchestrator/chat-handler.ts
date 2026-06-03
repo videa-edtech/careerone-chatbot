@@ -19,7 +19,7 @@ import { buildAgentsForQuery } from "../agents/definitions.js";
 import { predictNeededAgents } from "../agents/skill-router.js";
 import {
   addMessage,
-  createConversation,
+  resolveConversationForUser,
 } from "../memory/conversation-store.js";
 import { logTask } from "../memory/task-log.js";
 import { generateSessionSummary, getRecentSummaries } from "../memory/session-summary.js";
@@ -114,6 +114,7 @@ interface ChatOptions {
   topK?: number;
   searchMode?: string;
   sessionId?: string;
+  userIp: string;
 }
 
 /**
@@ -145,9 +146,9 @@ async function loadRecentOutputFiles(): Promise<string | undefined> {
 /**
  * 이전 세션 요약 로드
  */
-function loadSessionSummaries(): string | undefined {
+function loadSessionSummaries(userIp: string): string | undefined {
   try {
-    const summaries = getRecentSummaries(3);
+    const summaries = getRecentSummaries(3, userIp);
     if (summaries.length === 0) return undefined;
 
     return summaries.map((s, i) => {
@@ -327,9 +328,9 @@ function buildSubAgentTools(
 }
 
 export async function handleChat(res: Response, options: ChatOptions) {
-  const { message, topK = 5, searchMode = "auto", sessionId } = options;
+  const { message, topK = 5, searchMode = "auto", sessionId, userIp } = options;
 
-  const convId = sessionId || createConversation();
+  const convId = resolveConversationForUser(userIp, sessionId);
 
   // SSE headers
   res.setHeader("Content-Type", "text/event-stream");
@@ -346,7 +347,7 @@ export async function handleChat(res: Response, options: ChatOptions) {
     loadRecentOutputFiles(),
     runPreSearch(message, topK, searchMode),
   ]);
-  const sessionSummaries = loadSessionSummaries();
+  const sessionSummaries = loadSessionSummaries(userIp);
 
   // 동적 에이전트 빌드
   const neededAgents = predictNeededAgents(message);
@@ -355,7 +356,7 @@ export async function handleChat(res: Response, options: ChatOptions) {
   console.log(`[Chat] Agents needed: ${neededAgents.join(", ") || "orchestrator-only"}`);
 
   // RAG 도구 빌드
-  const ragTools = buildRagTools();
+  const ragTools = buildRagTools({ userIp });
 
   // 서브에이전트 도구 빌드 (에이전트를 tool로 래핑)
   // 파일 생성 에이전트는 제외 — 오케스트레이터가 create_docx/pptx/excel을 직접 호출

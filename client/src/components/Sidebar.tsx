@@ -43,10 +43,10 @@ function formatTime(dateStr: string): string {
     const diffHr = Math.floor(diffMin / 60);
     const diffDay = Math.floor(diffHr / 24);
 
-    if (diffMin < 1) return "방금";
-    if (diffMin < 60) return `${diffMin}분 전`;
-    if (diffHr < 24) return `${diffHr}시간 전`;
-    if (diffDay < 7) return `${diffDay}일 전`;
+    if (diffMin < 1) return "Just now";
+    if (diffMin < 60) return `${diffMin} min ago`;
+    if (diffHr < 24) return `${diffHr} hr ago`;
+    if (diffDay < 7) return `${diffDay} day${diffDay === 1 ? "" : "s"} ago`;
     return `${d.getMonth() + 1}/${d.getDate()}`;
   } catch {
     return "";
@@ -118,7 +118,7 @@ export default function Sidebar({
           {outputFiles.length > 0 && (
             <section className="px-3 pb-3">
               <h3 className="px-2 py-2 text-[11px] font-body text-ink-600 uppercase tracking-wider">
-                생성된 파일 ({outputFiles.length})
+                Generated files ({outputFiles.length})
               </h3>
               <div className="space-y-0.5">
                 {outputFiles.map((file) => {

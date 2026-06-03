@@ -3,8 +3,9 @@ import { handleChat } from "../orchestrator/chat-handler.js";
 import { search, type SearchMode } from "../search/orchestrator.js";
 import { streamChat } from "../llm/provider.js";
 import { buildPrompt } from "../llm/prompt.js";
-import { addMessage, createConversation } from "../memory/conversation-store.js";
+import { addMessage, resolveConversationForUser } from "../memory/conversation-store.js";
 import { logTask } from "../memory/task-log.js";
+import { getClientIp } from "../utils/client-ip.js";
 
 const router = Router();
 
@@ -34,6 +35,8 @@ router.post("/api/chat", async (req: Request, res: Response) => {
     return;
   }
 
+  const userIp = getClientIp(req);
+
   // Agent SDK mode (default)
   if (mode === "agent") {
     await handleChat(res, {
@@ -41,12 +44,13 @@ router.post("/api/chat", async (req: Request, res: Response) => {
       topK: top_k,
       searchMode: search_mode,
       sessionId: session_id,
+      userIp,
     });
     return;
   }
 
   // Direct mode (fallback — no Agent SDK, faster but no orchestration)
-  await handleDirectChat(res, { message, topK: top_k, searchMode: search_mode, sessionId: session_id });
+  await handleDirectChat(res, { message, topK: top_k, searchMode: search_mode, sessionId: session_id, userIp });
 });
 
 /**
@@ -63,14 +67,14 @@ router.post("/api/chat/direct", async (req: Request, res: Response) => {
     return;
   }
 
-  await handleDirectChat(res, { message, topK: top_k, searchMode: search_mode, sessionId: session_id });
+  await handleDirectChat(res, { message, topK: top_k, searchMode: search_mode, sessionId: session_id, userIp: getClientIp(req) });
 });
 
 async function handleDirectChat(
   res: Response,
-  opts: { message: string; topK: number; searchMode: SearchMode; sessionId?: string }
+  opts: { message: string; topK: number; searchMode: SearchMode; sessionId?: string; userIp: string }
 ) {
-  const convId = opts.sessionId || createConversation();
+  const convId = resolveConversationForUser(opts.userIp, opts.sessionId);
 
   res.setHeader("Content-Type", "text/event-stream");
   res.setHeader("Cache-Control", "no-cache");
