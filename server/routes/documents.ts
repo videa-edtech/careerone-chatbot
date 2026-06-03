@@ -87,13 +87,17 @@ router.get("/api/intents", async (_req: Request, res: Response) => {
 });
 
 // Generated output files
-import { readdir, stat as fsStat } from "fs/promises";
+import { readdir, stat as fsStat, mkdir } from "fs/promises";
 import path from "path";
 import { PATHS } from "../config.js";
 
-router.get("/api/output-files", async (_req: Request, res: Response) => {
-  const outputDir = PATHS.output;
+router.get("/api/output-files", async (req: Request, res: Response) => {
+  const userIp = getClientIp(req);
+  const safeIp = userIp.replace(/:/g, "_");
+  const outputDir = path.join(PATHS.output, safeIp);
   try {
+    // Ensure IP-specific folder exists
+    await mkdir(outputDir, { recursive: true });
     const entries = await readdir(outputDir);
     const files = [];
     for (const name of entries) {
@@ -104,7 +108,7 @@ router.get("/api/output-files", async (_req: Request, res: Response) => {
           name,
           size: info.size,
           modified: info.mtime.toISOString(),
-          url: `/api/files/${encodeURIComponent(name)}`,
+          url: `/api/files/${encodeURIComponent(safeIp)}/${encodeURIComponent(name)}`,
         });
       }
     }

@@ -26,6 +26,7 @@ import { generateSessionSummary, getRecentSummaries } from "../memory/session-su
 import { appendEvent } from "../memory/session-events.js";
 import { saveSessionUsage } from "../memory/session-usage.js";
 import { buildRoutingPrompt } from "../agents/registry.js";
+import { buildLanguageInstruction } from "../utils/language.js";
 import path from "path";
 import { PATHS } from "../config.js";
 
@@ -64,7 +65,7 @@ const AGENT_LABELS: Record<string, string> = {
 /**
  * 오케스트레이터 시스템 프롬프트 생성
  */
-function buildOrchestratorPrompt(userContext?: string, recentFiles?: string, sessionSummaries?: string): string {
+function buildOrchestratorPrompt(languageInstruction: string, userContext?: string, recentFiles?: string, sessionSummaries?: string): string {
   const routingGuide = buildRoutingPrompt();
 
   const userSection = userContext
@@ -80,6 +81,8 @@ function buildOrchestratorPrompt(userContext?: string, recentFiles?: string, ses
     : "";
 
   return `당신은 Mini-RAG 로컬 AI 코워크 플랫폼의 오케스트레이터입니다.
+
+${languageInstruction}
 
 ## 핵심 역할
 사용자의 자연어 요청을 분석하고, 최적의 전문 에이전트에게 위임합니다.
@@ -120,10 +123,13 @@ interface ChatOptions {
 /**
  * 최근 생성된 파일 목록 로드
  */
-async function loadRecentOutputFiles(): Promise<string | undefined> {
+async function loadRecentOutputFiles(userIp: string): Promise<string | undefined> {
   try {
-    const { readdir, stat: fsStat } = await import("fs/promises");
-    const outputDir = PATHS.output;
+    const { readdir, stat: fsStat, mkdir } = await import("fs/promises");
+    const safeIp = userIp.replace(/:/g, "_");
+    const outputDir = path.join(PATHS.output, safeIp);
+    // Ensure folder exists
+    await mkdir(outputDir, { recursive: true });
     const entries = await readdir(outputDir);
     const files: { name: string; modified: string }[] = [];
 
@@ -344,7 +350,7 @@ export async function handleChat(res: Response, options: ChatOptions) {
 
   const [userContext, recentFiles, preSearchContext] = await Promise.all([
     loadUserContext(),
-    loadRecentOutputFiles(),
+    loadRecentOutputFiles(userIp),
     runPreSearch(message, topK, searchMode),
   ]);
   const sessionSummaries = loadSessionSummaries(userIp);
@@ -366,7 +372,8 @@ export async function handleChat(res: Response, options: ChatOptions) {
   const orchestratorTools = [...ragTools, ...subAgentTools];
 
   const llm = createDeepSeekChat({ temperature: 0 });
-  const systemPrompt = buildOrchestratorPrompt(userContext, recentFiles, sessionSummaries);
+  const languageInstruction = buildLanguageInstruction(message);
+  const systemPrompt = buildOrchestratorPrompt(languageInstruction, userContext, recentFiles, sessionSummaries);
 
   const orchestrator = createReactAgent({
     llm,
@@ -379,7 +386,7 @@ export async function handleChat(res: Response, options: ChatOptions) {
   const startTime = Date.now();
 
   try {
-    const prompt = `사용자 질문에 답변하세요. 검색 모드: ${searchMode}, 최대 결과: ${topK}\n\n질문: ${message}${preSearchContext}`;
+    const prompt = `${languageInstruction}\n\nAnswer the user's question. Search mode: ${searchMode}, max results: ${topK}\n\nUser question: ${message}${preSearchContext}`;
 
     const eventStream = orchestrator.streamEvents(
       { messages: [new HumanMessage(prompt)] },

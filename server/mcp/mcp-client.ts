@@ -24,6 +24,8 @@ import { createDocx } from "../tasks/create-docx.js";
 import { createPptx } from "../tasks/create-pptx.js";
 import { createExcel } from "../tasks/create-excel.js";
 import { PATHS } from "../config.js";
+import { mkdir } from "fs/promises";
+import path from "path";
 
 // ==============================
 // RAG 도구들 → LangChain DynamicStructuredTool
@@ -286,14 +288,17 @@ export function buildRagTools(context: RagToolContext = {}): DynamicStructuredTo
         headingLevel: s.heading_level as 1 | 2 | 3 | undefined,
         content: s.content,
       }));
+      const safeIp = (context.userIp || "unknown").replace(/:/g, "_");
+      const targetDir = path.join(PATHS.output, safeIp);
+      await mkdir(targetDir, { recursive: true });
       const filePath = await createDocx(
         args.file_name,
         sections,
         { title: args.title, author: args.author },
-        PATHS.output
+        targetDir
       );
       const fileName = filePath.split(/[\\/]/).pop()!;
-      return `✅ Word 문서 생성 완료\n파일명: ${fileName}\n다운로드: /api/files/${encodeURIComponent(fileName)}\n사이드바 "생성된 파일" 목록에서 바로 다운로드할 수 있습니다.`;
+      return `✅ Word 문서 생성 완료\n파일명: ${fileName}\n다운로드: /api/files/${encodeURIComponent(safeIp)}/${encodeURIComponent(fileName)}\n사이드바 "생성된 파일" 목록에서 바로 다운로드할 수 있습니다.`;
     },
   });
 
@@ -312,14 +317,17 @@ export function buildRagTools(context: RagToolContext = {}): DynamicStructuredTo
       })).describe("슬라이드 목록"),
     }),
     func: async (args) => {
+      const safeIp = (context.userIp || "unknown").replace(/:/g, "_");
+      const targetDir = path.join(PATHS.output, safeIp);
+      await mkdir(targetDir, { recursive: true });
       const filePath = await createPptx(
         args.file_name,
         args.slides,
         { title: args.title, author: args.author },
-        PATHS.output
+        targetDir
       );
       const fileName = filePath.split(/[\\/]/).pop()!;
-      return `✅ PowerPoint 생성 완료\n파일명: ${fileName}\n다운로드: /api/files/${encodeURIComponent(fileName)}\n사이드바 "생성된 파일" 목록에서 바로 다운로드할 수 있습니다.`;
+      return `✅ PowerPoint 생성 완료\n파일명: ${fileName}\n다운로드: /api/files/${encodeURIComponent(safeIp)}/${encodeURIComponent(fileName)}\n사이드바 "생성된 파일" 목록에서 바로 다운로드할 수 있습니다.`;
     },
   });
 
@@ -335,9 +343,12 @@ export function buildRagTools(context: RagToolContext = {}): DynamicStructuredTo
       })).describe("시트 목록"),
     }),
     func: async (args) => {
-      const filePath = await createExcel(args.file_name, args.sheets, PATHS.output);
+      const safeIp = (context.userIp || "unknown").replace(/:/g, "_");
+      const targetDir = path.join(PATHS.output, safeIp);
+      await mkdir(targetDir, { recursive: true });
+      const filePath = await createExcel(args.file_name, args.sheets, targetDir);
       const fileName = filePath.split(/[\\/]/).pop()!;
-      return `✅ Excel 파일 생성 완료\n파일명: ${fileName}\n다운로드: /api/files/${encodeURIComponent(fileName)}\n사이드바 "생성된 파일" 목록에서 바로 다운로드할 수 있습니다.`;
+      return `✅ Excel 파일 생성 완료\n파일명: ${fileName}\n다운로드: /api/files/${encodeURIComponent(safeIp)}/${encodeURIComponent(fileName)}\n사이드바 "생성된 파일" 목록에서 바로 다운로드할 수 있습니다.`;
     },
   });
 
