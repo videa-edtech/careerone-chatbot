@@ -45,15 +45,15 @@ export default function InputBar({ onSend, isStreaming, onStop, onUploadClick, p
 
   return (
     <div className="relative w-full max-w-3xl mx-auto">
-      <div className="relative bg-desk-elevated border border-desk-border rounded-2xl shadow-lg shadow-black/20 transition-all duration-200 focus-within:border-amber-glow/40 focus-within:shadow-amber-glow/5">
+      <div className="relative bg-white border border-blue-500 rounded-2xl shadow-lg  transition-all duration-200 focus-within:border-blue-500 focus-within:shadow-blue/800">
         <textarea
           ref={textareaRef}
           value={text}
           onChange={(e) => setText(e.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder={placeholder || "메시지를 입력하세요..."}
+          placeholder={placeholder || "Please enter a message..."}
           rows={1}
-          className="w-full bg-transparent text-paper-cream placeholder-ink-500 pl-5 pr-24 py-4 resize-none outline-none font-body text-[15px] leading-relaxed"
+          className="w-full bg-white text-[#464559] placeholder-blue-500 pl-5 pr-24 py-4 resize-none outline-none font-body text-[15px] leading-relaxed rounded-2xl"
         />
 
         {/* Action buttons */}
@@ -62,8 +62,8 @@ export default function InputBar({ onSend, isStreaming, onStop, onUploadClick, p
           {onUploadClick && (
             <button
               onClick={onUploadClick}
-              className="w-9 h-9 rounded-xl flex items-center justify-center text-ink-500 hover:text-amber-glow hover:bg-desk-hover transition-all"
-              title="파일 업로드"
+              className="w-9 h-9 rounded-xl flex items-center justify-center text-blue-500 hover:text-amber-glow hover:bg-blue-500 hover:text-white transition-all"
+              title="Upload"
             >
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" />
@@ -78,8 +78,8 @@ export default function InputBar({ onSend, isStreaming, onStop, onUploadClick, p
               isStreaming
                 ? "bg-red-500/20 text-red-400 hover:bg-red-500/30"
                 : text.trim()
-                  ? "bg-amber-glow text-desk-bg hover:bg-amber-warm"
-                  : "bg-desk-hover text-ink-500"
+                      ? "bg-blue-500 text-white hover:bg-blue-600"
+                      : "bg-white text-blue-500 border border-blue-500"
             }`}
           >
             {isStreaming ? (
@@ -96,8 +96,8 @@ export default function InputBar({ onSend, isStreaming, onStop, onUploadClick, p
         </div>
       </div>
 
-      <p className="text-center text-ink-600 text-xs mt-2.5 font-body">
-        문서를 드래그하여 업로드 · Enter 전송 · Shift+Enter 줄바꿈
+      <p className="text-center text-blue-600 text-xs mt-2.5 font-body">
+        Drag document to upload · Enter Send · Shift+Enter Newline
       </p>
     </div>
   );

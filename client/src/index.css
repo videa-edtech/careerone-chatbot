@@ -3,6 +3,14 @@
 @tailwind utilities;
 
 @layer base {
+  @font-face {
+    font-family: 'Lemon Milk Pro';
+    src: url('./fonts/Lemon Milk Pro Regular.otf') format('opentype'),
+    url('./fonts/Lemon Milk Pro Regular.ttf') format('truetype');
+    font-weight: 500; /* 500 tương ứng với Medium */
+    font-style: normal;
+    font-display: swap;
+  }
   * {
     scrollbar-width: thin;
     scrollbar-color: #464036 transparent;
@@ -14,7 +22,7 @@
   }
 
   body {
-    font-family: "Pretendard", "Noto Sans KR", system-ui, sans-serif;
+    font-family: 'Lemon Milk Pro', 'Poppins', 'Pretendard', 'Noto Sans KR', system-ui, sans-serif;
     overflow: hidden;
     height: 100vh;
   }

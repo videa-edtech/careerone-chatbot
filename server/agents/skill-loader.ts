@@ -1,23 +1,23 @@
 /**
- * Skill Loader — SKILL.md 파일을 읽어서 에이전트 프롬프트에 주입
+ * Skill Loader — Reads SKILL.md files and injects them into agent prompts
  *
- * Claude Code CLI 없이도 Skills가 동작하도록,
- * 서버 시작 시 .claude/skills/ 디렉토리에서 SKILL.md를 읽어
- * 에이전트 프롬프트에 직접 포함시킵니다.
+ * Allows Skills to operate without the Claude Code CLI.
+ * On server start, it reads SKILL.md from the .claude/skills/ directory
+ * and includes them directly into the agent prompts.
  *
- * 이 방식이면 npm install → npx tsx server/index.ts 만으로
- * 모든 Skills가 동작합니다.
+ * With this approach, running `npm install → npx tsx server/index.ts`
+ * will make all Skills operational.
  */
 import { readFile, readdir, stat } from "fs/promises";
 import path from "path";
 
 const SKILLS_DIR = path.resolve(".claude/skills");
 
-// 캐시 — 서버 시작 시 한 번만 로드
+// Cache — Load only once on server start
 const skillCache = new Map<string, string>();
 
 /**
- * 단일 Skill의 SKILL.md 내용을 로드
+ * Loads the SKILL.md content of a single Skill
  */
 export async function loadSkill(skillName: string): Promise<string> {
   if (skillCache.has(skillName)) {
@@ -36,7 +36,7 @@ export async function loadSkill(skillName: string): Promise<string> {
 }
 
 /**
- * 여러 Skills를 로드하여 하나의 문자열로 합침
+ * Loads multiple Skills and combines them into a single string
  */
 export async function loadSkills(skillNames: string[]): Promise<string> {
   const sections: string[] = [];
@@ -52,11 +52,11 @@ export async function loadSkills(skillNames: string[]): Promise<string> {
 }
 
 /**
- * 에이전트의 기본 프롬프트에 Skills 내용을 주입하여 최종 프롬프트 생성
+ * Injects Skills content into the agent's base prompt to generate the final prompt
  */
 export async function buildPromptWithSkills(
-  basePrompt: string,
-  skillNames: string[]
+    basePrompt: string,
+    skillNames: string[]
 ): Promise<string> {
   if (skillNames.length === 0) return basePrompt;
 
@@ -66,13 +66,15 @@ export async function buildPromptWithSkills(
   return `${basePrompt}
 
 ${"#".repeat(60)}
-# 참고 Skills (아래 프레임워크를 반드시 따르세요)
+# Reference Skills (You MUST strictly adhere to the frameworks below)
 ${"#".repeat(60)}
-${skillsContent}`;
+${skillsContent}
+
+**CRITICAL FINAL INSTRUCTION**: You must consume the skills above conceptually, but your final output to the user MUST be strictly in the language they used (English, Sinhala, or Tamil). Do not output Korean.`;
 }
 
 /**
- * 사용 가능한 모든 Skills 목록 반환
+ * Returns a list of all available Skills
  */
 export async function listAvailableSkills(): Promise<string[]> {
   try {
@@ -85,7 +87,7 @@ export async function listAvailableSkills(): Promise<string[]> {
         await stat(skillMd);
         skills.push(entry);
       } catch {
-        // SKILL.md 없으면 스킬 아님
+        // If SKILL.md doesn't exist, it's not a valid skill directory
       }
     }
 
@@ -96,7 +98,7 @@ export async function listAvailableSkills(): Promise<string[]> {
 }
 
 /**
- * 모든 Skills를 미리 로드 (서버 시작 시 호출)
+ * Preloads all Skills (Called during server startup)
  */
 export async function preloadAllSkills(): Promise<void> {
   const skills = await listAvailableSkills();

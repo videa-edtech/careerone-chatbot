@@ -80,12 +80,10 @@ export default function MessageBubble({ message, isLast, isStreaming }: Props) {
         {/* Role indicator for assistant */}
         {!isUser && (
           <div className="flex items-center gap-1.5 mb-1.5 ml-1">
-            <div className="w-5 h-5 rounded-md bg-amber-glow/10 flex items-center justify-center">
-              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#e8a84c" strokeWidth="2.5" strokeLinecap="round">
-                <path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20" />
-              </svg>
+            <div className="w-14 h-10 rounded-md flex items-center justify-center">
+              <img src="https://careerone-dev.videabiz.com/images/careerone-logo.webp" alt=""/>
             </div>
-            <span className="text-[11px] font-body text-ink-600">Mini-RAG</span>
+            <span className="text-[11px] font-lemon text-[#1c007e]">Helper</span>
           </div>
         )}
 
@@ -93,8 +91,8 @@ export default function MessageBubble({ message, isLast, isStreaming }: Props) {
         <div
           className={`rounded-2xl px-5 py-3.5 ${
             isUser
-              ? "bg-amber-glow/[0.12] border border-amber-glow/15 text-paper-cream"
-              : "bg-desk-surface/90 border border-desk-border/40 text-ink-200"
+                ? "bg-blue-500 text-white"
+                : "bg-blue-500 text-white"
           }`}
         >
           {isUser ? (

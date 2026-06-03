@@ -31,7 +31,7 @@ export default function ChatView({ messages, isStreaming, statusText, onSend, on
   }, [messages]);
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full bg-[#F5F7FA]">
       {/* Messages area */}
       <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-6">
         <div className="max-w-3xl mx-auto space-y-4">
@@ -49,7 +49,7 @@ export default function ChatView({ messages, isStreaming, statusText, onSend, on
       </div>
 
       {/* Status indicator + Input bar */}
-      <div className="shrink-0 bg-gradient-to-t from-desk-bg via-desk-bg/95 to-transparent">
+      <div className="shrink-0">
         {isStreaming && <StatusIndicator text={statusText} />}
         <div className="px-4 pb-5 pt-2">
           <InputBar
