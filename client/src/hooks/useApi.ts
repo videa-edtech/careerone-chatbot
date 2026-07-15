@@ -85,6 +85,12 @@ export function useOutputFiles() {
     } catch { /* ignore */ }
   }, []);
 
-  useEffect(() => { refresh(); }, [refresh]);
+  // 최초 로드 + 3초마다 폴링 (파일 생성 즉시 사이드바 반영)
+  useEffect(() => {
+    refresh();
+    const timer = setInterval(refresh, 3000);
+    return () => clearInterval(timer);
+  }, [refresh]);
+
   return { files, refresh };
 }

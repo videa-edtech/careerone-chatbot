@@ -21,10 +21,7 @@ uploads/
 *.log
 
 # Test data files (user-specific)
-*.xlsx
-*.pdf
-*.docx
-*.pptx
+
 
 # OS
 .DS_Store
@@ -42,6 +39,7 @@ create_*.py
 create_*.js
 create_*.cjs
 test_*.js
+test_*.ts
 sqlite-rag-technical-doc.md
 
 # Build info

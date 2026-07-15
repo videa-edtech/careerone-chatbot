@@ -148,7 +148,7 @@ export default function App() {
   );
 
   return (
-    <div className="h-screen flex flex-col bg-desk-bg overflow-hidden">
+      <div className="h-screen flex flex-col bg-white overflow-hidden">
       {/* Hidden file input */}
       <input
         ref={fileInputRef}
@@ -160,10 +160,10 @@ export default function App() {
       />
 
       {/* Top bar */}
-      <header className="shrink-0 flex items-center justify-between px-4 py-2.5 border-b border-desk-border/40 bg-desk-bg/90 backdrop-blur-sm z-30">
+        <header className="shrink-0 flex items-center justify-between px-4 py-2.5  bg-white z-30">
         <button
           onClick={() => setSidebarOpen(!sidebarOpen)}
-          className="flex items-center gap-2 text-ink-500 hover:text-paper-cream transition-colors p-1.5 rounded-lg hover:bg-desk-hover"
+          className="flex items-center gap-2 text-gray-500 hover:text-paper-cream transition-colors p-1.5 rounded-lg hover:bg-desk-hover"
         >
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
             <line x1="3" y1="6" x2="21" y2="6" />
@@ -172,22 +172,27 @@ export default function App() {
           </svg>
         </button>
 
-        <div className="flex items-center gap-2">
-          <div className="w-5 h-5 rounded-md bg-amber-glow/15 flex items-center justify-center">
-            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#e8a84c" strokeWidth="2.5" strokeLinecap="round">
-              <path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20" />
-            </svg>
+        <div className="flex justify-center w-full">
+          <div className="flex justify-center w-full">
+            <div className="flex items-center gap-2">
+              <div className="rounded-md flex items-center justify-center">
+                {/*<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#e8a84c" strokeWidth="2.5" strokeLinecap="round">*/}
+                {/*  <path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20" />*/}
+                {/*</svg>*/}
+                <img src="https://careerone-dev.videabiz.com/images/careerone-logo.webp" className="w-[64px]" alt=""/>
+              </div>
+              <span className="font-lemon text-xl text-[#1c007e]">Helper</span>
+            </div>
           </div>
-          <span className="font-display text-sm text-ink-400">Mini-RAG</span>
         </div>
 
-        <div className="flex items-center gap-3">
-          {status && status.total_documents > 0 && (
-            <span className="text-xs font-body text-ink-600 tabular-nums">
-              {status.total_documents} docs · {status.total_chunks.toLocaleString()} chunks
-            </span>
-          )}
-        </div>
+        {/*<div className="flex items-center gap-3">*/}
+        {/*  {status && status.total_documents > 0 && (*/}
+        {/*    <span className="text-xs font-body text-ink-600 tabular-nums">*/}
+        {/*      {status.total_documents} docs · {status.total_chunks.toLocaleString()} chunks*/}
+        {/*    </span>*/}
+        {/*  )}*/}
+        {/*</div>*/}
       </header>
 
       {/* Main */}

@@ -1,21 +1,18 @@
 /**
- * Document Summary — Karpathy Wiki 패턴
+ * Document Summary — Karpathy Wiki 패턴 (DeepSeek V4 Flash)
  *
- * 문서 전체를 빠짐없이 요약:
- * 1. 청크를 세그먼트로 그룹화
- * 2. 모든 세그먼트를 병렬 요약 (5개씩 동시)
- * 3. 부분 요약들을 섹션별로 조합
- * 4. 전체 개요(overview) 생성
- * 5. DB 저장 + 마크다운 파일 생성
+ * @anthropic-ai/sdk 제거 → deepseekClient (OpenAI 호환)로 교체
  */
 import db from "../db/connection.js";
-import Anthropic from "@anthropic-ai/sdk";
+import { deepseekClient } from "../llm/deepseek.js";
 import { writeFile, mkdir, stat as fsStat } from "fs/promises";
 import path from "path";
 import { PATHS } from "../config.js";
 import { chunkDocument } from "../ingestion/chunker.js";
 import { indexDocument } from "../ingestion/indexer.js";
 import { computeHash } from "../ingestion/deduplicator.js";
+
+const DEEPSEEK_MODEL = "deepseek-v4-flash";
 
 export interface DocumentSummary {
   id?: number;
@@ -82,12 +79,9 @@ export function getAllSummaries(): DocumentSummary[] {
 // 병렬 요약 생성
 // ==============================
 
-const CONCURRENT = 5;       // 동시 API 호출 수
-const SEGMENT_CHARS = 3000; // 세그먼트당 문자 수
+const CONCURRENT = 5;
+const SEGMENT_CHARS = 3000;
 
-/**
- * 배열을 N개씩 묶어서 병렬 실행
- */
 async function parallelBatch<T, R>(
   items: T[],
   concurrency: number,
@@ -109,15 +103,12 @@ async function parallelBatch<T, R>(
   return results;
 }
 
-/**
- * 청크를 세그먼트로 그룹화
- */
 function buildSegments(chunks: Array<{ title: string; content: string }>): string[] {
   const segments: string[] = [];
   let current = "";
 
   for (const chunk of chunks) {
-    if (chunk.content.length < 30) continue; // 빈 청크 스킵
+    if (chunk.content.length < 30) continue;
     const entry = `[${chunk.title}]\n${chunk.content}\n\n`;
     if (current.length + entry.length > SEGMENT_CHARS && current.length > 100) {
       segments.push(current);
@@ -131,7 +122,7 @@ function buildSegments(chunks: Array<{ title: string; content: string }>): strin
 }
 
 /**
- * AI로 문서 요약 생성 — 전체 문서 커버, 병렬 처리
+ * AI로 문서 요약 생성 — DeepSeek V4 Flash 사용
  */
 export async function generateDocumentSummary(
   documentId: number,
@@ -141,19 +132,19 @@ export async function generateDocumentSummary(
   if (chunks.length === 0) return null;
 
   try {
-    const client = new Anthropic();
     const segments = buildSegments(chunks);
+    console.log(`[DocSummary] ${fileName}: ${chunks.length} chunks → ${segments.length} segments`);
 
-    console.log(`[DocSummary] ${fileName}: ${chunks.length} chunks → ${segments.length} segments (전체 커버)`);
-
-    // ── 1단계: 모든 세그먼트를 병렬 요약 ──
+    // ── 1단계: 모든 세그먼트 병렬 요약 ──
     const partialSummaries = await parallelBatch(
       segments,
       CONCURRENT,
       async (segment, idx) => {
-        const resp = await client.messages.create({
-          model: "claude-haiku-4-5-20251001",
+        const resp = await deepseekClient.chat.completions.create({
+          model: DEEPSEEK_MODEL,
           max_tokens: 400,
+          // @ts-ignore
+          thinking: { type: "disabled" },
           messages: [{
             role: "user",
             content: `다음 문서 구간의 내용을 마크다운으로 요약하세요. 핵심 개념, 중요 용어, 주요 내용을 빠짐없이 포함하세요.
@@ -166,19 +157,20 @@ ${segment}
 [핵심 내용 3-5줄. 중요 용어는 **굵게** 표시]`,
           }],
         });
-        return resp.content[0].type === "text" ? resp.content[0].text : "";
+        return resp.choices[0]?.message?.content ?? "";
       }
     );
 
     console.log(`[DocSummary] ${fileName}: ${segments.length}/${segments.length} segments summarized`);
 
     // ── 2단계: 전체 개요 생성 ──
-    // 부분 요약들을 합쳐서 전체 흐름 파악
     const allPartials = partialSummaries.filter(Boolean).join("\n\n");
 
-    const overviewResp = await client.messages.create({
-      model: "claude-haiku-4-5-20251001",
+    const overviewResp = await deepseekClient.chat.completions.create({
+      model: DEEPSEEK_MODEL,
       max_tokens: 800,
+      // @ts-ignore
+      thinking: { type: "disabled" },
       messages: [{
         role: "user",
         content: `다음은 "${fileName}" 문서의 섹션별 요약입니다. 전체 문서의 개요를 마크다운으로 작성하세요.
@@ -199,7 +191,7 @@ ${allPartials.slice(0, 8000)}
       }],
     });
 
-    const overview = overviewResp.content[0].type === "text" ? overviewResp.content[0].text : "";
+    const overview = overviewResp.choices[0]?.message?.content ?? "";
 
     // ── 3단계: 최종 마크다운 조합 ──
     let fullMd = `# ${fileName} — AI 요약\n\n`;
@@ -207,9 +199,9 @@ ${allPartials.slice(0, 8000)}
     fullMd += `${overview}\n\n`;
     fullMd += `---\n\n# 섹션별 상세 요약\n\n`;
     fullMd += allPartials;
-    fullMd += `\n\n---\n*이 요약은 AI가 자동으로 생성했습니다. 전체 ${segments.length}개 구간을 빠짐없이 처리했습니다.*\n`;
+    fullMd += `\n\n---\n*이 요약은 DeepSeek V4 Flash가 자동으로 생성했습니다. 전체 ${segments.length}개 구간을 처리했습니다.*\n`;
 
-    // ── 4단계: DB에서 사용할 필드 추출 ──
+    // ── 4단계: DB 필드 추출 ──
     const titleMatch = overview.match(/^##?\s+전체 요약\s*\n([\s\S]*?)(?=\n## |$)/m);
     const conceptsMatch = overview.match(/## 핵심 개념\s*\n([\s\S]*?)(?=\n## |$)/);
     const structureMatch = overview.match(/## 문서 구조\s*\n([\s\S]*?)(?=\n## |$)/);
@@ -226,7 +218,6 @@ ${allPartials.slice(0, 8000)}
       structure: extractedStructure,
     };
 
-    // DB 저장
     saveDocumentSummary(summary);
 
     // 마크다운 파일 저장
@@ -236,7 +227,7 @@ ${allPartials.slice(0, 8000)}
     const mdPath = path.join(summaryDir, `${safeName}_요약.md`);
     await writeFile(mdPath, fullMd, "utf-8");
 
-    // 요약 마크다운을 RAG 인덱스에 직접 등록 (검색 대상)
+    // 요약 마크다운을 RAG 인덱스에 등록
     try {
       const summaryChunks = chunkDocument(`${safeName}_요약.md`, fullMd, "markdown", { source: fileName, type: "summary" });
       const hash = computeHash(fullMd);
@@ -247,6 +238,7 @@ ${allPartials.slice(0, 8000)}
       console.warn("[DocSummary] Summary indexing failed:", (e as Error).message?.slice(0, 60));
       console.log(`[DocSummary] ✅ ${fileName}: ${segments.length} segments → ${mdPath} (${(fullMd.length / 1024).toFixed(1)}KB)`);
     }
+
     return summary;
   } catch (e) {
     console.warn("[DocSummary] Failed:", (e as Error).message?.slice(0, 80));

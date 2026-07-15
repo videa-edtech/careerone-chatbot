@@ -42,7 +42,10 @@ export function useChat() {
   const loadConversation = useCallback(async (convId: string) => {
     try {
       const res = await fetch(`/api/conversations/${convId}`);
-      if (!res.ok) return false;
+      if (!res.ok) {
+        setSessionId(null);
+        return false;
+      }
       const data = await res.json();
       const msgs: Message[] = (data.messages || []).map((m: any) => ({
         role: m.role,

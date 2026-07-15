@@ -1,4 +1,5 @@
 import type { SearchResult } from "../search/fts.js";
+import { buildLanguageInstruction } from "../utils/language.js";
 
 export const SYSTEM_PROMPT = `당신은 문서 기반 질의응답 어시스턴트입니다.
 사용자가 업로드한 다양한 포맷의 문서(PDF, DOCX, PPTX, XLSX, Markdown 등)를 검색하여 답변합니다.
@@ -28,7 +29,8 @@ export function buildPrompt(
     })
     .join("\n\n---\n\n");
 
-  const userPrompt = `## 검색된 문서 (${chunks.length}건)\n\n${context}\n\n---\n\n## 질문\n${question}`;
+  const languageInstruction = buildLanguageInstruction(question);
+  const userPrompt = `${languageInstruction}\n\n## Retrieved documents (${chunks.length})\n\n${context}\n\n---\n\n## User question\n${question}`;
 
   return { systemPrompt: SYSTEM_PROMPT, userPrompt };
 }

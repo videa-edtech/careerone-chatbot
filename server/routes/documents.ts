@@ -1,10 +1,11 @@
 import { Router, type Request, type Response } from "express";
 import { getDocumentStats, listDocuments, deleteDocument } from "../ingestion/indexer.js";
-import { listConversations, getConversation } from "../memory/conversation-store.js";
+import { listConversations, getConversationForUser } from "../memory/conversation-store.js";
 import { getTaskLog } from "../memory/task-log.js";
 import { listIntents } from "../memory/intent-store.js";
 import { getSessionMessages, getEvents } from "../memory/session-events.js";
 import { getSessionUsage, getTotalUsage } from "../memory/session-usage.js";
+import { getClientIp } from "../utils/client-ip.js";
 
 const router = Router();
 
@@ -40,12 +41,12 @@ router.get("/api/status", (_req: Request, res: Response) => {
 // Conversations
 router.get("/api/conversations", (req: Request, res: Response) => {
   const limit = parseInt(req.query.limit as string) || 20;
-  res.json(listConversations(limit));
+  res.json(listConversations(getClientIp(req), limit));
 });
 
 router.get("/api/conversations/:id", (req: Request, res: Response) => {
   const convId = req.params.id as string;
-  const conv = getConversation(convId);
+  const conv = getConversationForUser(convId, getClientIp(req));
   if (!conv) {
     res.status(404).json({ error: "Conversation not found" });
     return;
@@ -63,7 +64,13 @@ router.get("/api/conversations/:id", (req: Request, res: Response) => {
 
 // 세션 이벤트 로그 (디버깅/추적용)
 router.get("/api/conversations/:id/events", (req: Request, res: Response) => {
-  const events = getEvents(req.params.id as string);
+  const convId = req.params.id as string;
+  const conv = getConversationForUser(convId, getClientIp(req));
+  if (!conv) {
+    res.status(404).json({ error: "Conversation not found" });
+    return;
+  }
+  const events = getEvents(convId);
   res.json(events);
 });
 
@@ -80,13 +87,17 @@ router.get("/api/intents", async (_req: Request, res: Response) => {
 });
 
 // Generated output files
-import { readdir, stat as fsStat } from "fs/promises";
+import { readdir, stat as fsStat, mkdir } from "fs/promises";
 import path from "path";
 import { PATHS } from "../config.js";
 
-router.get("/api/output-files", async (_req: Request, res: Response) => {
-  const outputDir = PATHS.output;
+router.get("/api/output-files", async (req: Request, res: Response) => {
+  const userIp = getClientIp(req);
+  const safeIp = userIp.replace(/:/g, "_");
+  const outputDir = path.join(PATHS.output, safeIp);
   try {
+    // Ensure IP-specific folder exists
+    await mkdir(outputDir, { recursive: true });
     const entries = await readdir(outputDir);
     const files = [];
     for (const name of entries) {
@@ -97,7 +108,7 @@ router.get("/api/output-files", async (_req: Request, res: Response) => {
           name,
           size: info.size,
           modified: info.mtime.toISOString(),
-          url: `/api/files/${encodeURIComponent(name)}`,
+          url: `/api/files/${encodeURIComponent(safeIp)}/${encodeURIComponent(name)}`,
         });
       }
     }
