@@ -20,8 +20,12 @@ export default function InputBar({ onSend, isStreaming, onStop, onUploadClick, p
   // Auto-resize textarea
   useEffect(() => {
     const el = textareaRef.current;
-    if (el) {
-      el.style.height = "auto";
+    if (!el) return;
+    el.style.height = "auto";
+    // scrollHeight can be 0 when the element isn't laid out yet
+    // (e.g. inside a hidden/not-yet-visible iframe). Skip resizing then
+    // so we don't collapse the box to height: 0px.
+    if (el.scrollHeight > 0) {
       el.style.height = Math.min(el.scrollHeight, 200) + "px";
     }
   }, [text]);
@@ -53,7 +57,7 @@ export default function InputBar({ onSend, isStreaming, onStop, onUploadClick, p
           onKeyDown={handleKeyDown}
           placeholder={placeholder || "Please enter a message..."}
           rows={1}
-          className="w-full bg-white text-[#464559] placeholder-blue-500 pl-5 pr-24 py-4 resize-none outline-none font-body text-[15px] leading-relaxed rounded-2xl"
+          className="w-full min-h-[56px] bg-white text-[#464559] placeholder-blue-500 pl-5 pr-24 py-4 resize-none outline-none font-body text-[15px] leading-relaxed rounded-2xl"
         />
 
         {/* Action buttons */}
